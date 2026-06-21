@@ -300,9 +300,9 @@
   }
   #save-toast svg{width:15px;height:15px;flex:none;}
 
-  /* ---- BARRA DE BUSCA (canto superior, flutuante sobre o canvas) ---- */
+  /* ---- BOTÃO DE LUPA (busca fica escondida atrás dele, sempre) ---- */
   #search-toggle-btn{
-    display:none; /* só aparece em telas pequenas, via media query abaixo */
+    display:flex;
     position:fixed;
     top:calc(var(--topbar-h) + 10px);
     right:14px;
@@ -321,6 +321,7 @@
   #search-toggle-btn svg{width:18px;height:18px;}
   #search-toggle-btn:hover{color:var(--text);}
   #search-bar{
+    display:none;
     position:fixed;
     top:calc(var(--topbar-h) + 64px);
     left:50%;
@@ -956,16 +957,8 @@
   .color-palette-action-btn.danger:hover{color:var(--danger, #e5484d);}
   .color-palette-action-btn svg{width:14px;height:14px;}
 
-  /* ---- BUSCA EM TELA PEQUENA: vira botão de lupa, barra fica oculta até tocar ---- */
-  @media (max-width: 640px){
-    #search-toggle-btn{ display:flex; }
-    #search-bar{
-      display:none;
-      width:min(320px, 88vw);
-    }
-    #search-bar.mobile-open{ display:block; }
-    #project-name-bar{ max-width:62vw; font-size:18px; }
-  }
+  #search-bar.mobile-open{ display:block; }
+  #project-name-bar{ max-width:62vw; }
 </style>
 </head>
 <body>
