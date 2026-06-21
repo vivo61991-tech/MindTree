@@ -1,0 +1,4432 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>MindTree</title>
+
+<!-- ===== PWA: manifest, ícones e meta tags de instalação ===== -->
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="favicon-512.png" />
+<link rel="apple-touch-icon" href="favicon-192.png" />
+<link rel="shortcut icon" href="favicon.ico" />
+<meta name="theme-color" content="#16171b" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MindTree" />
+<meta name="description" content="Editor visual de mapas mentais e árvores hierárquicas" />
+
+<style>
+  :root{
+    --bg:#16171b;
+    --bg-canvas:#1c1d22;
+    --panel:#222328;
+    --panel-2:#2a2b32;
+    --border:#3a3b42;
+    --border-light:#46474f;
+    --text:#eceef2;
+    --text-dim:#9a9ba5;
+    --text-faint:#6b6c75;
+    --accent:#5b8def;
+    --accent-2:#4a7adb;
+    --danger:#e2554f;
+    --success:#3fb37f;
+    --radius:10px;
+    --radius-sm:6px;
+    --shadow:0 4px 20px rgba(0,0,0,.35);
+    --topbar-h:56px;
+    --dot-color:#33343d;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f4f5f7;
+      --bg-canvas:#eaecf0;
+      --panel:#ffffff;
+      --panel-2:#f1f2f5;
+      --border:#dcdfe4;
+      --border-light:#c7cbd3;
+      --text:#1c1e22;
+      --text-dim:#5c5f68;
+      --text-faint:#8b8e96;
+      --accent:#3b6fd9;
+      --accent-2:#2f5cc0;
+      --danger:#d23b35;
+      --success:#27915f;
+      --shadow:0 4px 20px rgba(20,20,30,.12);
+      --dot-color:#d7d9de;
+    }
+  }
+  html[data-theme="dark"]{
+    --bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;
+    --border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;
+    --text-faint:#6b6c75;--accent:#5b8def;--accent-2:#4a7adb;--danger:#e2554f;
+    --success:#3fb37f;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;
+  }
+  html[data-theme="light"]{
+    --bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;
+    --border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;
+    --text-faint:#8b8e96;--accent:#3b6fd9;--accent-2:#2f5cc0;--danger:#d23b35;
+    --success:#27915f;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    width:100%;height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font-family:inherit;}
+  input,textarea{font-family:inherit;}
+
+  /* ===== TOPBAR ===== */
+  #topbar{
+    position:fixed;top:0;left:0;right:0;height:var(--topbar-h);
+    background:color-mix(in srgb, var(--panel) 80%, transparent);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;
+    padding:0 12px;
+    gap:8px;
+    z-index:100;
+  }
+  #topbar .brand{
+    font-weight:600;font-size:15px;color:var(--text);
+    margin-right:8px;white-space:nowrap;
+    display:flex;align-items:center;gap:6px;
+  }
+  #topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  .tb-spacer{flex:1;}
+  .tb-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    height:36px;padding:0 12px;
+    background:var(--panel-2);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    color:var(--text);
+    font-size:13px;font-weight:500;
+    cursor:pointer;
+    transition:background .15s,border-color .15s;
+    white-space:nowrap;
+  }
+  .tb-btn:hover{background:#33343c;border-color:#52535d;}
+  .tb-btn:active{transform:translateY(1px);}
+  .tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tb-btn.primary:hover{background:var(--accent-2);}
+  .tb-btn.icon-only{width:36px;padding:0;justify-content:center;}
+  .tb-btn svg{width:16px;height:16px;flex:none;}
+  .tb-divider{width:1px;height:24px;background:var(--border-light);margin:0 4px;}
+  .tb-btn:disabled,.tb-btn.is-disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    pointer-events:none;
+  }
+  .tb-btn.primary:disabled,.tb-btn.primary.is-disabled{
+    background:var(--panel-2);
+    border-color:var(--border-light);
+    color:var(--text-faint);
+  }
+
+  #mode-toggle{
+    display:flex;background:var(--panel-2);border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);overflow:hidden;height:36px;
+  }
+  #mode-toggle button{
+    border:none;background:transparent;color:var(--text-dim);
+    padding:0 14px;font-size:13px;font-weight:500;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .15s,color .15s;
+    width:92px;
+  }
+  #mode-toggle button.active{background:var(--accent);color:#fff;}
+
+  /* ===== CANVAS ===== */
+  #canvas-wrap{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    background:
+      radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+    background-size:24px 24px;
+    background-color:var(--bg-canvas);
+  }
+  #canvas-inner{
+    position:relative;
+    width:100%;height:100%;
+  }
+  svg#tree-svg{
+    display:block;
+    width:100%;
+    height:100%;
+    cursor:grab;
+  }
+  svg#tree-svg.panning{
+    cursor:grabbing;
+  }
+
+  /* ---- CONTROLES DE ZOOM (canto inferior direito) ---- */
+  #zoom-controls{
+    position:fixed;
+    right:20px;bottom:20px;
+    display:flex;flex-direction:column;
+    background:var(--panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    z-index:60;
+  }
+  .zoom-btn{
+    width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;
+    border:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .zoom-btn:hover{background:var(--panel-2);color:var(--text);}
+  .zoom-btn svg{width:17px;height:17px;}
+  .zoom-divider{height:1px;background:var(--border);}
+  #zoom-pct{
+    font-size:10.5px;
+    color:var(--text-faint);
+    text-align:center;
+    padding:3px 0;
+    border-top:1px solid var(--border);
+    user-select:none;
+  }
+
+  /* ---- BARRA DE CONTROLES DE NÍVEL (centralizada embaixo) ---- */
+  #level-controls{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    background:var(--panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    z-index:60;
+  }
+  .level-btn{
+    width:42px;height:38px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;
+    border:none;
+    border-right:1px solid var(--border);
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .level-btn:last-child{border-right:none;}
+  .level-btn:hover{background:var(--panel-2);color:var(--text);}
+  .level-btn:active{background:var(--panel-2);color:var(--accent);}
+  .level-glyph{
+    font-size:15px;
+    line-height:1;
+    user-select:none;
+    /* força renderização como texto/símbolo monocromático (herda a cor do
+       botão), em vez do emoji colorido que alguns navegadores usam por
+       padrão para ⏪ e ⏩ — mesmo efeito visual de ⏮, ▶ e ⏭ */
+    font-variant-emoji: text;
+    font-family: "Segoe UI Symbol", "Noto Sans Symbols", "Apple Symbols", system-ui, sans-serif;
+    -webkit-font-feature-settings: "liga" off;
+    font-feature-settings: "liga" off;
+  }
+
+  /* ---- NOME DO PROJETO (título solto, centralizado, topo) ---- */
+  #project-name-bar{
+    position:fixed;
+    top:calc(var(--topbar-h) + 14px);
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-.01em;
+    color:var(--text);
+    z-index:55;
+    user-select:none;
+    pointer-events:none;
+    max-width:80vw;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  #project-name-unsaved{
+    display:none;
+    color:var(--accent);
+    font-size:10px;
+    line-height:1;
+    flex:none;
+  }
+  #project-name-unsaved.show{display:inline;}
+
+  /* ---- TOAST DE CONFIRMAÇÃO (salvo com sucesso) ---- */
+  #save-toast{
+    position:fixed;
+    bottom:78px;
+    left:50%;
+    transform:translateX(-50%) translateY(8px);
+    background:var(--success, #3fb37f);
+    color:#fff;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 18px;
+    border-radius:999px;
+    box-shadow:var(--shadow);
+    z-index:200;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  #save-toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  #save-toast svg{width:15px;height:15px;flex:none;}
+
+  /* ---- BARRA DE BUSCA (canto superior, flutuante sobre o canvas) ---- */
+  #search-toggle-btn{
+    display:none; /* só aparece em telas pequenas, via media query abaixo */
+    position:fixed;
+    top:calc(var(--topbar-h) + 10px);
+    right:14px;
+    width:38px;height:38px;
+    align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border:1px solid var(--border-light);
+    border-radius:50%;
+    color:var(--text-dim);
+    box-shadow:var(--shadow);
+    cursor:pointer;
+    z-index:61;
+  }
+  #search-toggle-btn svg{width:18px;height:18px;}
+  #search-toggle-btn:hover{color:var(--text);}
+  #search-bar{
+    position:fixed;
+    top:calc(var(--topbar-h) + 64px);
+    left:50%;
+    transform:translateX(-50%);
+    width:min(360px, 80vw);
+    z-index:60;
+  }
+  #search-input-wrap{
+    display:flex;align-items:center;gap:8px;
+    background:color-mix(in srgb, var(--panel) 82%, transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-lg, 20px);
+    padding:8px 14px;
+    box-shadow:var(--shadow);
+  }
+  #search-input-wrap svg{width:16px;height:16px;color:var(--text-faint);flex:none;}
+  #search-input{
+    flex:1;
+    border:none;background:transparent;outline:none;
+    color:var(--text);font-size:13.5px;
+  }
+  #search-input::placeholder{color:var(--text-faint);}
+  #search-nav{
+    display:flex;align-items:center;gap:2px;flex:none;
+  }
+  #search-count{
+    font-size:11px;color:var(--text-faint);
+    white-space:nowrap;padding:0 4px;
+  }
+  .search-nav-btn{
+    width:22px;height:22px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;border-radius:4px;
+    color:var(--text-dim);cursor:pointer;
+  }
+  .search-nav-btn:hover{background:var(--panel-2);color:var(--text);}
+  .search-nav-btn svg{width:13px;height:13px;}
+  .search-clear-btn{
+    width:20px;height:20px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;border-radius:50%;
+    color:var(--text-faint);cursor:pointer;flex:none;
+  }
+  .search-clear-btn:hover{background:var(--panel-2);color:var(--text);}
+  .search-clear-btn svg{width:13px;height:13px;}
+
+  /* ---- PREVIEW DO RESULTADO DA BUSCA (mini cápsula, logo abaixo) ---- */
+  #search-preview{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin:8px auto 0;
+    width:fit-content;
+    max-width:100%;
+    background:var(--accent);
+    color:#fff;
+    font-size:13px;font-weight:600;
+    padding:7px 16px;
+    border-radius:999px;
+    box-shadow:var(--shadow);
+    pointer-events:none;
+    user-select:none;
+    animation:search-preview-pop .15s ease;
+  }
+  #search-preview-name{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    max-width:240px;
+  }
+  #search-preview-count{
+    font-size:11px;font-weight:700;
+    opacity:.85;
+    flex:none;
+  }
+  @keyframes search-preview-pop{
+    from{ opacity:0; transform:translateY(-4px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  /* destaque de cápsula encontrada na busca */
+  .capsule-rect.search-match{
+    stroke:#ffc83c;
+    stroke-width:3;
+  }
+  .capsule-rect.search-current{
+    stroke:#ffc83c;
+    stroke-width:4;
+    filter:drop-shadow(0 0 8px rgba(255,200,60,.7));
+  }
+
+  /* ---- NÓ (círculo que expande/colapsa) ---- */
+  .tree-node-circle{cursor:pointer;}
+  .tree-node-circle.has-children{cursor:pointer;}
+  .circle-base{
+    transition:filter .15s,r .15s;
+  }
+  .tree-node-circle:hover .circle-base{filter:brightness(1.15);}
+  .tree-node-circle.focused .circle-base{filter:drop-shadow(0 0 0 4px rgba(91,141,239,.35));}
+  .circle-glyph{
+    stroke:var(--panel);
+    stroke-width:1.6;
+    stroke-linecap:round;
+    pointer-events:none;
+  }
+
+  /* ---- CÁPSULA (título, sem borda) ---- */
+  .tree-capsule{cursor:pointer;}
+  .capsule-rect{
+    transition:filter .15s;
+    filter:drop-shadow(0 1px 4px rgba(0,0,0,.16));
+  }
+  .tree-capsule:hover .capsule-rect{filter:drop-shadow(0 2px 8px rgba(0,0,0,.24)) brightness(1.06);}
+  .tree-capsule.focused .capsule-rect{filter:drop-shadow(0 0 0 3px rgba(91,141,239,.4)) drop-shadow(0 2px 8px rgba(0,0,0,.2));}
+  .capsule-label{
+    font-size:13px;
+    font-weight:600;
+    pointer-events:none;
+    dominant-baseline:central;
+  }
+  .link-path{
+    fill:none;
+    stroke-width:2;
+  }
+
+  .add-btn-group{cursor:pointer;}
+  .add-btn-circle{
+    fill:var(--panel);
+    stroke:var(--accent);
+    stroke-width:1.5;
+    transition:fill .15s,transform .15s;
+    transform-origin:center;
+    transform-box:fill-box;
+  }
+  .add-btn-group:hover .add-btn-circle{fill:var(--accent);transform:scale(1.12);}
+  .add-btn-plus{
+    stroke:var(--accent);
+    stroke-width:1.8;
+    stroke-linecap:round;
+    pointer-events:none;
+    transition:stroke .15s;
+  }
+  .add-btn-group:hover .add-btn-plus{stroke:#fff;}
+
+  .edit-btn-group{cursor:pointer;}
+  .edit-btn-circle{
+    fill:var(--panel);
+    stroke:var(--text-faint);
+    stroke-width:1.3;
+    transition:fill .15s,stroke .15s;
+  }
+  .edit-btn-group:hover .edit-btn-circle{fill:var(--panel-2);stroke:var(--text-dim);}
+
+  /* ===== EMPTY STATE ===== */
+  #empty-hint{
+    position:fixed;
+    top:calc(var(--topbar-h) + 24px);left:50%;
+    transform:translateX(-50%);
+    color:var(--text-faint);
+    font-size:13px;
+    pointer-events:none;
+    display:none;
+  }
+
+  /* ===== SCROLLBARS ===== */
+  #canvas-wrap::-webkit-scrollbar{width:10px;height:10px;}
+  #canvas-wrap::-webkit-scrollbar-track{background:transparent;}
+  #canvas-wrap::-webkit-scrollbar-thumb{background:#3a3b42;border-radius:5px;}
+  #canvas-wrap::-webkit-scrollbar-thumb:hover{background:#46474f;}
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width:640px){
+    #topbar .brand span.full{display:none;}
+    .tb-btn span.label{display:none;}
+    .tb-btn{padding:0;width:36px;justify-content:center;}
+    .tb-btn.has-label{width:auto;padding:0 10px;}
+  }
+
+  /* ===== OVERLAY / MODAL (edição) ===== */
+  .mt-overlay{
+    position:fixed;inset:0;
+    background:rgba(10,11,14,.55);
+    backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;
+    padding:20px;
+    animation:mt-fade .15s ease;
+  }
+  @keyframes mt-fade{from{opacity:0;}to{opacity:1;}}
+  .mt-modal{
+    width:100%;max-width:420px;
+    background:var(--panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    animation:mt-pop .15s ease;
+  }
+  @keyframes mt-pop{from{transform:scale(.96);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .mt-modal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    font-size:14px;font-weight:600;
+    gap:10px;
+  }
+  .mt-modal-head-left{
+    display:flex;align-items:center;gap:8px;
+    min-width:0;flex:1;
+  }
+  .mt-modal-head-left span{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .mt-back{
+    background:var(--panel-2);border:1px solid var(--border-light);
+    color:var(--text-dim);
+    width:26px;height:26px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex:none;
+    transition:background .15s,color .15s;
+  }
+  .mt-back:hover{background:var(--panel);color:var(--text);}
+  .mt-back svg{width:15px;height:15px;}
+  .mt-x{
+    background:none;border:none;color:var(--text-dim);
+    font-size:22px;line-height:1;cursor:pointer;padding:0 4px;
+  }
+  .mt-x:hover{color:var(--text);}
+  .mt-modal-body{padding:16px;display:flex;flex-direction:column;gap:6px;}
+  .mt-label{font-size:12px;color:var(--text-dim);font-weight:500;margin-top:8px;}
+  .mt-label:first-child{margin-top:0;}
+  .mt-input,.mt-textarea{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    color:var(--text);
+    padding:9px 11px;
+    font-size:14px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .mt-input:focus,.mt-textarea:focus{border-color:var(--accent);}
+  .mt-textarea{min-height:90px;resize:vertical;line-height:1.5;}
+  .mt-modal-foot{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;border-top:1px solid var(--border);
+  }
+  .mt-btn{
+    height:36px;padding:0 16px;border-radius:var(--radius-sm);
+    border:1px solid var(--border-light);
+    background:var(--panel-2);color:var(--text);
+    font-size:13px;font-weight:500;cursor:pointer;
+  }
+  .mt-btn:hover{background:#33343c;}
+  .mt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .mt-btn.primary:hover{background:var(--accent-2);}
+  .mt-btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  .mt-btn.danger:hover{background:rgba(226,85,79,.12);}
+
+  /* ===== PAINEL DE VISUALIZAÇÃO ===== */
+  .mt-view-overlay{align-items:center;}
+  .mt-view-panel{
+    width:100%;max-width:460px;max-height:80vh;
+    background:var(--panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    display:flex;flex-direction:column;
+    animation:mt-pop .15s ease;
+  }
+  .mt-view-panel .mt-modal-body{overflow-y:auto;}
+  .mt-view-text{font-size:14px;line-height:1.6;color:var(--text-dim);margin:0 0 14px;}
+  .mt-view-text.mt-faint{color:var(--text-faint);font-style:italic;}
+  .mt-children-title{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
+  .mt-children-list{display:flex;flex-direction:column;gap:6px;}
+  .mt-child-row{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    transition:border-color .15s,background .15s;
+    max-width:100%;
+  }
+  .mt-child-row:hover{border-color:var(--accent);background:#2c2d35;}
+  .mt-child-main{flex:1 1 0%;min-width:0;overflow:hidden;}
+  .mt-child-name{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mt-child-text{
+    font-size:12px;color:var(--text-faint);margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    word-break:break-word;
+  }
+  .mt-child-count{
+    font-size:11px;font-weight:600;color:var(--accent);
+    background:rgba(91,141,239,.15);
+    border-radius:10px;padding:2px 7px;flex:none;
+  }
+  .mt-chevron{width:16px;height:16px;color:var(--text-faint);flex:none;}
+  .mt-empty-children{font-size:13px;color:var(--text-faint);font-style:italic;padding:8px 0;}
+
+  /* ===== DRAWER PLANILHA ===== */
+  .sheet-overlay{
+    position:fixed;inset:0;background:rgba(10,11,14,.4);
+    z-index:500;opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .sheet-overlay.open{opacity:1;pointer-events:auto;}
+  .sheet-drawer{
+    position:fixed;top:0;right:0;bottom:0;
+    width:min(560px, 92vw);
+    background:var(--panel);
+    border-left:1px solid transparent;
+    box-shadow:none;
+    z-index:501;
+    display:flex;flex-direction:column;
+    transform:translateX(100%);
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .sheet-drawer.open{
+    transform:translateX(0);
+    border-left-color:var(--border-light);
+    box-shadow:-8px 0 30px rgba(0,0,0,.4);
+  }
+  /* variante: drawer abre pelo lado ESQUERDO da tela (menu principal e
+     submenus como Cores, Estilo, Projetos) — a Planilha continua à direita,
+     já que costuma ser consultada lado a lado com a árvore que cresce à direita */
+  .sheet-drawer.drawer-left{
+    left:0;right:auto;
+    border-left:none;
+    border-right:1px solid transparent;
+    transform:translateX(-100%);
+  }
+  .sheet-drawer.drawer-left.open{
+    transform:translateX(0);
+    border-right-color:var(--border-light);
+    box-shadow:8px 0 30px rgba(0,0,0,.4);
+  }
+  .sheet-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px;border-bottom:1px solid var(--border);
+    font-size:15px;font-weight:600;
+  }
+  .sheet-toolbar{padding:10px 18px;border-bottom:1px solid var(--border);}
+  .sheet-info{font-size:12px;color:var(--text-faint);}
+  .sheet-table-wrap{flex:1;overflow:auto;padding:0;}
+  table#sheet-table{
+    border-collapse:collapse;width:100%;font-size:13px;
+  }
+  table#sheet-table th{
+    position:sticky;top:0;
+    background:var(--panel-2);
+    color:var(--text-dim);
+    font-weight:600;font-size:11.5px;
+    border-bottom:1px solid var(--border-light);
+    text-align:left;
+    white-space:nowrap;
+    padding:0;
+  }
+  .sheet-header-input{
+    width:100%;min-width:90px;
+    background:transparent;
+    border:none;outline:none;
+    color:var(--text-dim);
+    font-weight:600;font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.03em;
+    padding:9px 10px;
+    font-family:inherit;
+  }
+  .sheet-header-input:focus{
+    background:var(--panel);
+    box-shadow:inset 0 0 0 1.5px var(--accent);
+    color:var(--text);
+  }
+  table#sheet-table td{
+    border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);
+    padding:0;
+    vertical-align:top;
+  }
+  table#sheet-table td.sheet-cell-empty{background:transparent;}
+  .sheet-cell-input{
+    width:100%;min-width:140px;
+    background:transparent;
+    border:none;outline:none;
+    color:var(--text);
+    padding:8px 10px;
+    font-size:13px;font-family:inherit;
+    resize:none;
+  }
+  .sheet-cell-input:focus{background:var(--panel-2);box-shadow:inset 0 0 0 1.5px var(--accent);}
+  .sheet-rel-col{
+    color:var(--text-faint);font-size:11px;
+    padding:8px 8px;white-space:nowrap;
+  }
+
+  /* ===== DRAWER ESTILO ===== */
+  .style-drawer{
+    width:min(360px, 92vw);
+  }
+  .style-body{
+    flex:1;overflow-y:auto;
+    padding:18px;
+    display:flex;flex-direction:column;gap:24px;
+  }
+  .style-section-title{
+    font-size:12px;font-weight:600;
+    color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.03em;
+    margin-bottom:10px;
+  }
+  .style-options{
+    display:flex;gap:8px;
+  }
+  .style-option-btn{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    background:var(--panel-2);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:10px 6px;
+    cursor:pointer;
+    transition:border-color .15s,background .15s;
+  }
+  .style-option-btn:hover{border-color:var(--border-light);}
+  .style-option-btn.active{
+    border-color:var(--accent);
+    background:rgba(91,141,239,.08);
+  }
+  .style-option-btn svg{
+    width:48px;height:22px;
+    fill:none;
+    stroke:var(--text-dim);
+    stroke-width:2;
+  }
+  .style-option-btn.active svg{stroke:var(--accent);}
+  .style-option-btn span{
+    font-size:11px;
+    color:var(--text-dim);
+    font-weight:500;
+    text-align:center;
+  }
+  .style-option-btn.active span{color:var(--accent);}
+
+  /* ===== DRAWER PROJETOS ===== */
+  .projects-drawer{
+    width:min(360px, 92vw);
+  }
+  .projects-toolbar{
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+  }
+  .projects-toolbar-divider{
+    height:1px;
+    background:var(--border);
+    margin:0 0 10px;
+  }
+  .projects-list{
+    flex:1;overflow-y:auto;
+    padding:14px 18px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .projects-empty{
+    font-size:13px;color:var(--text-faint);font-style:italic;
+    text-align:center;padding:30px 0;
+  }
+  .project-row{
+    display:flex;align-items:center;gap:10px;
+    padding:12px 14px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    transition:border-color .15s,background .15s;
+  }
+  .project-row:hover{border-color:var(--accent);background:#2c2d35;}
+  .project-row.current{border-color:var(--accent);background:rgba(91,141,239,.08);}
+  .project-row-main{flex:1;min-width:0;}
+  .project-row-name{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .project-row-meta{font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .project-row-actions{display:flex;gap:4px;flex:none;}
+  .project-action-btn{
+    width:28px;height:28px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;border-radius:6px;
+    color:var(--text-faint);cursor:pointer;
+  }
+  .project-action-btn:hover{background:var(--panel);color:var(--text);}
+  .project-action-btn.danger:hover{color:var(--danger);}
+  .project-action-btn svg{width:15px;height:15px;}
+
+  /* ===== DRAWER MENU PRINCIPAL ===== */
+  .main-menu-drawer{ width:min(300px, 88vw); }
+  .main-menu-body{
+    flex:1;overflow-y:auto;
+    padding:10px 14px 18px;
+  }
+  .menu-section{ margin-top:18px; }
+  .menu-section:first-child{ margin-top:8px; }
+  .menu-section-title{
+    font-size:11px;font-weight:700;color:var(--text-faint);
+    text-transform:uppercase;letter-spacing:.05em;
+    padding:0 10px 8px;
+  }
+  .menu-item{
+    width:100%;
+    display:flex;align-items:center;gap:12px;
+    padding:11px 12px;
+    background:transparent;
+    border:none;border-radius:var(--radius-sm);
+    color:var(--text);
+    font-size:14px;font-weight:500;
+    text-align:left;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .menu-item:hover{ background:var(--panel-2); }
+  .menu-item:active{ background:var(--panel-2); }
+  .menu-item svg{ width:18px;height:18px;flex:none;color:var(--text-dim); }
+
+  /* ===== POPOVER GENÉRICO (usado pelo menu de Exportar) ===== */
+  .color-popover{
+    position:fixed;
+    background:var(--panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:14px;
+    width:240px;
+    z-index:600;
+    display:none;
+  }
+  .color-popover.open{display:block;}
+  .export-menu-popover{width:260px;}
+
+  /* ===== DRAWER DE CORES ===== */
+  .color-drawer{ width:min(420px, 92vw); }
+  .color-drawer-body{
+    flex:1;overflow-y:auto;
+    padding:16px 18px 24px;
+  }
+  .color-section{ margin-bottom:26px; }
+  .color-section-title{
+    font-size:12px;font-weight:700;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.04em;
+    margin-bottom:10px;
+  }
+  .color-section-title-row{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .color-section-title-row .color-section-title{ margin-bottom:0; }
+  .color-pop-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .color-level-btn{
+    width:32px;height:32px;border-radius:8px;
+    border:1px solid var(--border-light);
+    background:var(--panel-2);color:var(--text-dim);
+    font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .color-level-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .root-color-row{
+    display:flex;align-items:center;gap:10px;
+  }
+  .color-swatch-input{
+    width:38px;height:38px;
+    border:1px solid var(--border-light);
+    border-radius:8px;
+    padding:0;background:none;cursor:pointer;
+    flex:none;
+  }
+  .color-hex-input{
+    flex:1;
+    background:var(--panel-2);
+    border:1px solid var(--border-light);
+    border-radius:6px;
+    padding:8px 10px;
+    color:var(--text);
+    font-size:13px;font-family:ui-monospace,monospace;
+    text-transform:lowercase;
+  }
+  .color-hex-input:focus{outline:none;border-color:var(--accent);}
+  .color-reset-btn, .color-add-btn{
+    width:34px;height:34px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);
+    border:1px solid var(--border-light);
+    border-radius:6px;
+    color:var(--text-dim);cursor:pointer;
+  }
+  .color-reset-btn:hover, .color-add-btn:hover{background:var(--panel);color:var(--text);}
+  .color-reset-btn svg, .color-add-btn svg{width:15px;height:15px;}
+
+  .color-palette-list{
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .color-palette-row{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 8px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+  }
+  .color-palette-idx{
+    font-size:11px;color:var(--text-faint);
+    width:18px;flex:none;text-align:center;
+  }
+  .color-palette-swatch{
+    width:28px;height:28px;flex:none;
+    border-radius:6px;
+    border:1px solid var(--border-light);
+    cursor:pointer;
+    padding:0;
+  }
+  .color-palette-hex{
+    flex:1;min-width:0;
+    background:transparent;
+    border:none;
+    color:var(--text);
+    font-size:12.5px;font-family:ui-monospace,monospace;
+    text-transform:lowercase;
+  }
+  .color-palette-hex:focus{outline:none;}
+  .color-palette-actions{
+    display:flex;gap:2px;flex:none;
+  }
+  .color-palette-action-btn{
+    width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;border-radius:5px;
+    color:var(--text-faint);cursor:pointer;
+  }
+  .color-palette-action-btn:hover{background:var(--panel);color:var(--text);}
+  .color-palette-action-btn.danger:hover{color:var(--danger, #e5484d);}
+  .color-palette-action-btn svg{width:14px;height:14px;}
+
+  /* ---- BUSCA EM TELA PEQUENA: vira botão de lupa, barra fica oculta até tocar ---- */
+  @media (max-width: 640px){
+    #search-toggle-btn{ display:flex; }
+    #search-bar{
+      display:none;
+      width:min(320px, 88vw);
+    }
+    #search-bar.mobile-open{ display:block; }
+    #project-name-bar{ max-width:62vw; font-size:18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand"><span class="dot"></span><span class="full">MindTree</span></div>
+
+  <div id="mode-toggle">
+    <button id="mode-edit-btn" class="active" data-mode="edit">Editar</button>
+    <button id="mode-view-btn" data-mode="view">Visualizar</button>
+  </div>
+
+  <div class="tb-spacer"></div>
+
+  <button class="tb-btn icon-only" id="btn-theme" title="Alternar tema">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-icon"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+  </button>
+
+  <button class="tb-btn icon-only" id="btn-menu" title="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+</div>
+
+<div id="project-name-bar">
+  <span id="project-name-text">Sem título</span>
+  <span id="project-name-unsaved" title="Alterações não salvas">●</span>
+</div>
+
+<div id="save-toast"></div>
+
+<div id="canvas-wrap">
+  <div id="canvas-inner">
+    <svg id="tree-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+
+<button id="search-toggle-btn" title="Buscar">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+</button>
+
+<div id="search-bar">
+  <div id="search-input-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" id="search-input" placeholder="Buscar por nome..." autocomplete="off" />
+    <div id="search-nav" style="display:none">
+      <span id="search-count"></span>
+      <button class="search-nav-btn" id="search-prev" title="Anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="search-nav-btn" id="search-next" title="Próximo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+    <button class="search-clear-btn" id="search-clear" title="Limpar" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div id="search-preview" style="display:none">
+    <span id="search-preview-name"></span>
+    <span id="search-preview-count"></span>
+  </div>
+</div>
+
+<div id="zoom-controls">
+  <button class="zoom-btn" id="zoom-in" title="Aumentar zoom">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <div class="zoom-divider"></div>
+  <button class="zoom-btn" id="zoom-out" title="Diminuir zoom">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+  </button>
+  <div class="zoom-divider"></div>
+  <button class="zoom-btn" id="zoom-fit" title="Ajustar à tela">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+  </button>
+  <div id="zoom-pct">100%</div>
+</div>
+
+<div id="level-controls">
+  <button class="level-btn" id="level-collapse-all" title="Fechar todos os níveis">
+    <span class="level-glyph">⏮</span>
+  </button>
+  <button class="level-btn" id="level-collapse-one" title="Fechar o último nível aberto">
+    <span class="level-glyph">⏪</span>
+  </button>
+  <button class="level-btn" id="level-expand-level" title="Explorar próximo nó">
+    <span class="level-glyph">▶</span>
+  </button>
+  <button class="level-btn" id="level-expand-one" title="Abrir o próximo nível (toda a árvore)">
+    <span class="level-glyph">⏩</span>
+  </button>
+  <button class="level-btn" id="level-expand-all" title="Abrir todos os níveis">
+    <span class="level-glyph">⏭</span>
+  </button>
+</div>
+
+<div id="empty-hint">A árvore está vazia. Use o botão de mais para começar.</div>
+
+<!-- ===== DRAWER PLANILHA ===== -->
+
+<div id="sheet-overlay" class="sheet-overlay"></div>
+<div id="sheet-drawer" class="sheet-drawer">
+  <div class="sheet-head">
+    <span>Planilha</span>
+    <button class="mt-x" id="sheet-close">&times;</button>
+  </div>
+  <div class="sheet-toolbar">
+    <span id="sheet-info" class="sheet-info"></span>
+  </div>
+  <div class="sheet-table-wrap">
+    <table id="sheet-table"></table>
+  </div>
+</div>
+
+<!-- ===== DRAWER ESTILO ===== -->
+
+<div id="style-overlay" class="sheet-overlay"></div>
+<div id="style-drawer" class="sheet-drawer style-drawer drawer-left">
+  <div class="sheet-head">
+    <span>Estilo</span>
+    <button class="mt-x" id="style-close">&times;</button>
+  </div>
+  <div class="style-body">
+
+    <div class="style-section">
+      <div class="style-section-title">Formato do container</div>
+      <div class="style-options">
+        <button class="style-option-btn" data-shape="capsule">
+          <svg viewBox="0 0 64 28"><rect x="2" y="2" width="60" height="24" rx="12"/></svg>
+          <span>Cápsula</span>
+        </button>
+        <button class="style-option-btn" data-shape="rect">
+          <svg viewBox="0 0 64 28"><rect x="2" y="2" width="60" height="24" rx="0"/></svg>
+          <span>Retângulo</span>
+        </button>
+        <button class="style-option-btn" data-shape="rounded">
+          <svg viewBox="0 0 64 28"><rect x="2" y="2" width="60" height="24" rx="6"/></svg>
+          <span>Cantos arred.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="style-section">
+      <div class="style-section-title">Altura do container</div>
+      <div class="style-options">
+        <button class="style-option-btn" data-height="max">
+          <svg viewBox="0 0 64 28"><rect x="6" y="2" width="52" height="24" rx="4"/></svg>
+          <span>Máxima</span>
+        </button>
+        <button class="style-option-btn" data-height="min">
+          <svg viewBox="0 0 64 28"><rect x="6" y="10" width="52" height="8" rx="4"/></svg>
+          <span>Mínima</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="style-section">
+      <div class="style-section-title">Linhas de conexão</div>
+      <div class="style-options">
+        <button class="style-option-btn" data-line="smooth">
+          <svg viewBox="0 0 64 28"><path d="M4,6 C30,6 30,22 60,22"/></svg>
+          <span>Suave</span>
+        </button>
+        <button class="style-option-btn" data-line="straight">
+          <svg viewBox="0 0 64 28"><path d="M4,6 H32 V22 H60"/></svg>
+          <span>Reto</span>
+        </button>
+        <button class="style-option-btn" data-line="rounded">
+          <svg viewBox="0 0 64 28"><path d="M4,6 H26 Q32,6 32,12 V16 Q32,22 38,22 H60"/></svg>
+          <span>Arredondado</span>
+        </button>
+        <button class="style-option-btn" data-line="orthogonal">
+          <svg viewBox="0 0 64 28"><path d="M4,6 H32 V16 Q32,22 38,22 H60"/></svg>
+          <span>Ortogonal</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== DRAWER PROJETOS ===== -->
+
+<div id="projects-overlay" class="sheet-overlay"></div>
+<div id="projects-drawer" class="sheet-drawer projects-drawer drawer-left">
+  <div class="sheet-head">
+    <span>Projetos</span>
+    <button class="mt-x" id="projects-close">&times;</button>
+  </div>
+  <div class="projects-toolbar">
+    <button class="tb-btn has-label" id="btn-new-project" style="width:100%;justify-content:center;margin-bottom:10px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="label">Novo projeto</span>
+    </button>
+    <div class="projects-toolbar-divider"></div>
+    <button class="tb-btn primary has-label" id="btn-save-project" style="width:100%;justify-content:center;margin-bottom:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      <span class="label" id="btn-save-project-label">Salvar</span>
+    </button>
+    <button class="tb-btn has-label" id="btn-save-as-project" style="width:100%;justify-content:center;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M9 17h6M12 14v6"/></svg>
+      <span class="label">Salvar como novo</span>
+    </button>
+  </div>
+  <div class="projects-list" id="projects-list">
+    <div class="projects-empty">Nenhum projeto salvo ainda.</div>
+  </div>
+</div>
+
+<!-- ===== DRAWER MENU PRINCIPAL ===== -->
+<div id="main-menu-overlay" class="sheet-overlay"></div>
+<div id="main-menu-drawer" class="sheet-drawer main-menu-drawer drawer-left">
+  <div class="sheet-head">
+    <span>Menu</span>
+    <button class="mt-x" id="main-menu-close">&times;</button>
+  </div>
+  <div class="main-menu-body">
+    <div class="menu-section">
+      <div class="menu-section-title">Projeto</div>
+      <button class="menu-item" id="menu-btn-projects">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        <span>Meus projetos</span>
+      </button>
+      <button class="menu-item" id="menu-btn-reset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+        <span>Reiniciar árvore</span>
+      </button>
+    </div>
+    <div class="menu-section">
+      <div class="menu-section-title">Aparência</div>
+      <button class="menu-item" id="menu-btn-colors">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+        <span>Cores</span>
+      </button>
+      <button class="menu-item" id="menu-btn-style">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+        <span>Estilo</span>
+      </button>
+    </div>
+    <div class="menu-section">
+      <div class="menu-section-title">Dados</div>
+      <button class="menu-item" id="menu-btn-sheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+        <span>Planilha</span>
+      </button>
+      <button class="menu-item" id="menu-btn-import">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        <span>Importar</span>
+      </button>
+      <button class="menu-item" id="menu-btn-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0l-4 4m4-4l4 4M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2"/></svg>
+        <span>Exportar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DRAWER DE CORES ===== -->
+<div id="color-overlay" class="sheet-overlay"></div>
+<div id="color-drawer" class="sheet-drawer color-drawer drawer-left">
+  <div class="sheet-head">
+    <span>Cores</span>
+    <button class="mt-x" id="color-close">&times;</button>
+  </div>
+  <div class="color-drawer-body">
+    <div class="color-section">
+      <div class="color-section-title">Diferenciar cores até o nível</div>
+      <div class="color-pop-row" id="color-level-buttons"></div>
+    </div>
+
+    <div class="color-section">
+      <div class="color-section-title">Cor da raiz</div>
+      <div class="root-color-row">
+        <input type="color" id="root-color-input" class="color-swatch-input" />
+        <input type="text" id="root-color-hex" class="color-hex-input" maxlength="7" placeholder="#5a5b64" />
+        <button class="color-reset-btn" id="root-color-reset" title="Restaurar padrão">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="color-section">
+      <div class="color-section-title-row">
+        <div class="color-section-title">Paleta (em sequência)</div>
+        <button class="color-add-btn" id="color-add-btn" title="Adicionar cor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <div class="color-palette-list" id="color-palette-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INPUT OCULTO PRA IMPORTAÇÃO ===== -->
+<input type="file" id="file-input" accept=".csv,.xlsx,.xls,.html,.htm" style="display:none" />
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+console.log('MindTree base carregado. D3 versão:', d3.version);
+
+/* =========================================================
+   MODELO DE DADOS
+   Cada nó: { id, name, text, children: [], collapsed: bool }
+   ========================================================= */
+const TreeModel = (() => {
+  let nextId = 1;
+  const genId = () => 'n' + (nextId++);
+
+  function createNode(name = '', text = '') {
+    return { id: genId(), name, text, children: [], collapsed: true };
+  }
+
+  // raiz inicial
+  let root = createNode('Novo projeto', '');
+
+  function getRoot(){ return root; }
+
+  function setRoot(newRoot){
+    root = newRoot;
+    // recalibra nextId pra não colidir em importações
+    let maxNum = 0;
+    (function walk(n){
+      const m = /^n(\d+)$/.exec(n.id);
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+      (n.children||[]).forEach(walk);
+    })(root);
+    nextId = maxNum + 1;
+  }
+
+  function findNode(id, node = root){
+    if (node.id === id) return node;
+    for (const c of node.children){
+      const found = findNode(id, c);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function findParent(id, node = root, parent = null){
+    if (node.id === id) return parent;
+    for (const c of node.children){
+      const found = findParent(id, c, node);
+      if (found !== undefined && found !== null) return found;
+    }
+    return null;
+  }
+
+  function addChild(parentId, name = '', text = ''){
+    const parent = findNode(parentId);
+    if (!parent) return null;
+    const child = createNode(name, text);
+    parent.children.push(child);
+    return child;
+  }
+
+  function updateNode(id, fields){
+    const node = findNode(id);
+    if (!node) return false;
+    Object.assign(node, fields);
+    return true;
+  }
+
+  function removeNode(id){
+    if (id === root.id) return false;
+    const parent = findParent(id);
+    if (!parent) return false;
+    parent.children = parent.children.filter(c => c.id !== id);
+    return true;
+  }
+
+  function toggleCollapsed(id){
+    const node = findNode(id);
+    if (!node) return;
+    if (!node.collapsed) {
+      // está ABERTO e vai FECHAR: reseta em cascata — todos os descendentes
+      // voltam ao estado fechado, para que reabrir esse nó sempre mostre
+      // só o próximo nível, do zero, sem "lembrar" de aberturas anteriores
+      node.collapsed = true;
+      collapseDescendants(node);
+    } else {
+      node.collapsed = false;
+    }
+  }
+
+  function collapseDescendants(node){
+    (node.children || []).forEach(c => {
+      c.collapsed = true;
+      collapseDescendants(c);
+    });
+  }
+
+  // ---- controles de nível GLOBAL (toda a árvore de uma vez) ----
+
+  function getMaxOpenDepth(node = root, depth = 0){
+    // maior profundidade que está atualmente VISÍVEL (aberta) em qualquer ramo.
+    // um nó conta como "aberto até aqui" se ele tem filhos E não está colapsado;
+    // a profundidade dos próprios filhos (visíveis) é o que se acumula.
+    if (node.collapsed || !node.children || !node.children.length) return depth;
+    return Math.max(...node.children.map(c => getMaxOpenDepth(c, depth + 1)));
+  }
+
+  function flattenPreOrder(node = root, acc = []){
+    // lista todos os nós da árvore em ordem de profundidade (pré-ordem),
+    // SEM a raiz (ela já está sempre visível) — usado pela navegação ⏩
+    (node.children || []).forEach(c => {
+      acc.push(c);
+      flattenPreOrder(c, acc);
+    });
+    return acc;
+  }
+
+  function expandNextNode(){
+    // navegação sequencial em profundidade (DFS): a cada clique, SEMPRE
+    // varre a árvore inteira DO INÍCIO (em ordem de pré-ordem) e abre o
+    // PRIMEIRO nó que ainda está FECHADO e tem filhos pra revelar.
+    //
+    // Importante: não depende de um "ponteiro de última posição" — isso
+    // evita que a navegação fique desatualizada quando o usuário mexe na
+    // árvore manualmente por fora (clica em nós, importa nova árvore, etc).
+    // Sempre reflete o estado real, garantindo que comece do topo e nunca
+    // pule pra um ponto no meio sem ter passado pelos anteriores.
+    const allNodes = flattenPreOrder();
+    if (!allNodes.length) return;
+
+    const target = allNodes.find(n => n.collapsed && n.children && n.children.length);
+    if (!target) {
+      // não há mais nenhum nó fechado com filhos — todo mundo já foi
+      // expandido. Reinicia o ciclo: fecha tudo de volta ao estado inicial
+      // (só a raiz visível) e abre o primeiro nó da árvore, recomeçando.
+      collapseAllLevels();
+      const restartTarget = allNodes.find(n => n.children && n.children.length);
+      if (restartTarget) {
+        restartTarget.collapsed = false;
+        AppState.focusedNodeId = restartTarget.id;
+      }
+      return;
+    }
+
+    // garante que todos os ANCESTRAIS do alvo estejam abertos (senão ele
+    // fica escondido e nunca aparece na tela, mesmo marcado como expandido)
+    let parent = findParent(target.id);
+    while (parent) {
+      if (parent.collapsed) parent.collapsed = false;
+      parent = findParent(parent.id);
+    }
+    // abre o próprio nó alvo
+    target.collapsed = false;
+    AppState.focusedNodeId = target.id;
+  }
+
+  function expandNextLevel(){
+    // expande TODA A ÁRVORE por camada uniforme: olha a profundidade máxima
+    // aberta atualmente em qualquer ramo e empurra essa fronteira em +1 de
+    // uma vez. Ramos "atrasados" (que ainda não alcançaram a fronteira) são
+    // alcançados primeiro, antes da fronteira avançar de fato.
+    const maxDepth = getMaxOpenDepth();
+
+    function hasLaggingClosed(node, depth){
+      if (node.collapsed) return depth < maxDepth && node.children && node.children.length > 0;
+      return (node.children || []).some(c => hasLaggingClosed(c, depth + 1));
+    }
+    const lagging = hasLaggingClosed(root, 0);
+
+    function walk(node, depth){
+      if (node.collapsed) {
+        const targetDepth = lagging ? maxDepth - 1 : maxDepth;
+        if (depth === targetDepth && node.children && node.children.length) {
+          node.collapsed = false;
+        }
+        return;
+      }
+      (node.children || []).forEach(c => walk(c, depth + 1));
+    }
+    walk(root, 0);
+  }
+
+  function collapseLastLevel(){
+    // colapsa todos os nós que estão na profundidade máxima ABERTA atual
+    // (volta uma camada uniformemente). Se a árvore já está toda fechada
+    // (maxDepth=0), não faz nada.
+    const maxDepth = getMaxOpenDepth();
+    if (maxDepth === 0) return;
+    function walk(node, depth){
+      if (depth === maxDepth - 1 && node.children && node.children.length && !node.collapsed) {
+        node.collapsed = true;
+        collapseDescendants(node);
+        return;
+      }
+      (node.children || []).forEach(c => {
+        if (!node.collapsed) walk(c, depth + 1);
+      });
+    }
+    walk(root, 0);
+  }
+
+  function expandAllLevels(){
+    function walk(node){
+      if (node.children && node.children.length) node.collapsed = false;
+      (node.children || []).forEach(walk);
+    }
+    walk(root);
+  }
+
+  function collapseAllLevels(){
+    (root.children || []).forEach(c => {
+      c.collapsed = true;
+      collapseDescendants(c);
+    });
+  }
+
+  function depthOf(id, node = root, d = 0){
+    if (node.id === id) return d;
+    for (const c of node.children){
+      const found = depthOf(id, c, d + 1);
+      if (found !== -1) return found;
+    }
+    return -1;
+  }
+
+  function nodeCount(node = root){
+    return 1 + node.children.reduce((sum, c) => sum + nodeCount(c), 0);
+  }
+
+  function maxDepth(node = root, d = 0){
+    if (!node.children.length) return d;
+    return Math.max(...node.children.map(c => maxDepth(c, d + 1)));
+  }
+
+  return {
+    getRoot, setRoot, createNode,
+    findNode, findParent, addChild, updateNode, removeNode,
+    toggleCollapsed, depthOf, nodeCount, maxDepth,
+    getMaxOpenDepth, expandNextLevel, expandNextNode, collapseLastLevel, expandAllLevels, collapseAllLevels
+  };
+})();
+
+/* =========================================================
+   ESTADO GLOBAL DA UI
+   ========================================================= */
+const DEFAULT_PALETTE_HEX = [
+  '#bc2424', '#bc5224', '#9a681d', '#6b6214', '#5a6b14',
+  '#477817', '#2a7817', '#177821', '#17783e', '#17785b',
+  '#177878', '#1d759a', '#1d4f9a', '#1d2a9a', '#361d9a',
+  '#5c1d9a', '#811d9a', '#9a1d8e', '#9a1d68', '#9a1d43'
+];
+const DEFAULT_ROOT_COLOR = '#5a5b64';
+
+const AppState = {
+  mode: 'edit',            // 'edit' | 'view'
+  colorLevels: 4,          // quantos níveis diferenciar cor
+  focusedNodeId: null,     // último nó focado (clique)
+  editingFieldId: null,    // id do nó cujo campo está aberto pra edição
+  containerShape: 'capsule', // 'capsule' | 'rect' | 'rounded'
+  containerHeight: 'max',    // 'max' | 'min'
+  lineStyle: 'smooth',       // 'smooth' | 'straight' | 'rounded'
+  columnNames: [],           // nomes customizados por nível/profundidade (índice 0 = nível 1).
+                              // se vazio ou sem entrada pra um índice, usa "Nível N" como padrão
+  customPalette: [...DEFAULT_PALETTE_HEX], // lista editável de cores hex (até 20), usada em sequência
+  rootColor: DEFAULT_ROOT_COLOR,           // cor customizável específica para o nó raiz
+};
+
+function getColumnName(levelIndex1Based){
+  const custom = AppState.columnNames[levelIndex1Based - 1];
+  return (custom && custom.trim()) ? custom.trim() : ('Nível ' + levelIndex1Based);
+}
+
+/* =========================================================
+   MOTOR DE RENDERIZAÇÃO (D3 tree layout, horizontal)
+   ========================================================= */
+const Renderer = (() => {
+  const svg = d3.select('#tree-svg');
+  const wrap = document.getElementById('canvas-wrap');
+  const inner = document.getElementById('canvas-inner');
+
+  // ---- ZOOM / PAN ----
+  // o SVG agora tem tamanho FIXO (100% da viewport). Um <g class="zoom-layer">
+  // interno recebe a transformação (translate+scale) calculada pelo d3.zoom.
+  // Isso substitui o scroll nativo do navegador por um sistema de câmera
+  // explícito, necessário para zoom de verdade (scroll do mouse, botões +/-,
+  // ajustar à tela) e para pan com o botão do meio do mouse.
+  const ZOOM_MIN = 0.15;
+  const ZOOM_MAX = 2.5;
+  let currentTransform = d3.zoomIdentity;
+
+  const zoomLayer = svg.append('g').attr('class', 'zoom-layer');
+
+  const zoomBehavior = d3.zoom()
+    .scaleExtent([ZOOM_MIN, ZOOM_MAX])
+    .filter((event) => {
+      // botão esquerdo arrasta normalmente; botão do meio também aciona pan
+      // (preventDefault evita o autoscroll nativo do navegador no middle-click)
+      if (event.type === 'wheel') return true;
+      if (event.type === 'mousedown') return event.button === 0 || event.button === 1;
+      return !event.button;
+    })
+    .on('zoom', (event) => {
+      currentTransform = event.transform;
+      zoomLayer.attr('transform', currentTransform);
+      updateZoomPct();
+    })
+    .on('start', (event) => {
+      if (event.sourceEvent && event.sourceEvent.button === 1) {
+        svg.classed('panning', true);
+      }
+    })
+    .on('end', () => {
+      svg.classed('panning', false);
+    });
+
+  svg.call(zoomBehavior).on('dblclick.zoom', null);
+
+  // middle-click: evita o comportamento padrão do navegador (autoscroll icon)
+  svg.node().addEventListener('mousedown', (ev) => {
+    if (ev.button === 1) ev.preventDefault();
+  });
+  svg.node().addEventListener('auxclick', (ev) => {
+    if (ev.button === 1) ev.preventDefault();
+  });
+
+  function updateZoomPct(){
+    const el = document.getElementById('zoom-pct');
+    if (el) el.textContent = Math.round(currentTransform.k * 100) + '%';
+  }
+
+  function zoomBy(factor){
+    svg.transition().duration(200).call(zoomBehavior.scaleBy, factor);
+  }
+
+  function zoomTo(transform, duration){
+    svg.transition().duration(duration ?? 400).call(zoomBehavior.transform, transform);
+  }
+
+  // dimensões — nó (círculo) compacto + cápsula curta, só pro título
+  const CIRCLE_R = 9;        // raio do nó (círculo clicável que expande/colapsa)
+  const CAPSULE_H_MAX = 36;  // altura máxima da cápsula (atual)
+  const CAPSULE_H_MIN = 22;  // altura mínima — o menor possível pra caber o texto
+  function getCapsuleH(){ return AppState.containerHeight === 'min' ? CAPSULE_H_MIN : CAPSULE_H_MAX; }
+
+  function getContainerRadius(h){
+    if (AppState.containerShape === 'rect') return 0;
+    if (AppState.containerShape === 'rounded') return 6;
+    return h / 2; // 'capsule' — totalmente arredondado
+  }
+  const CAPSULE_GAP = 14;    // distância entre o nó e a cápsula
+  const MIN_CAPSULE_W = 70;
+  const PAD_X = 14;          // padding horizontal interno do texto na cápsula
+  const ROW_H = 46;          // altura reservada por linha (nó+cápsula+respiro)
+  const LEVEL_GAP = 64;      // espaço horizontal entre níveis (nó até próximo nó)
+  const PADDING = 90;        // margem ao redor de toda a árvore
+  const CHAR_W = 7.6;        // largura aproximada por caractere (13px font)
+
+  // paleta vibrante — pares [escuro, claro] por nível, ambos com bom contraste
+  // calcula se o texto deve ser branco ou escuro sobre uma cor de fundo,
+  // baseado em luminância relativa (WCAG) — garante legibilidade mesmo com
+  // cores customizadas pelo usuário no painel de Cores
+  function bestTextColor(hex){
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substr(0, 2), 16) / 255;
+    const g = parseInt(h.substr(2, 2), 16) / 255;
+    const b = parseInt(h.substr(4, 2), 16) / 255;
+    const lin = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const contrastWithWhite = (1.05) / (luminance + 0.05);
+    return contrastWithWhite >= 3.2 ? '#ffffff' : '#1c1e22';
+  }
+
+  // levemente ajusta a cor pro tema claro (um pouco mais clara) sem mudar o
+  // matiz, pra manter a identidade da cor escolhida pelo usuário nos dois temas
+  function adjustForLightTheme(hex){
+    const h = hex.replace('#', '');
+    let r = parseInt(h.substr(0, 2), 16);
+    let g = parseInt(h.substr(2, 2), 16);
+    let b = parseInt(h.substr(4, 2), 16);
+    const mix = (c) => Math.round(c + (255 - c) * 0.06);
+    r = mix(r); g = mix(g); b = mix(b);
+    return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+  }
+
+  function colorPairFromHex(hex){
+    const dark = hex;
+    const light = adjustForLightTheme(hex);
+    return {
+      dark: { fill: dark, text: bestTextColor(dark) },
+      light: { fill: light, text: bestTextColor(light) }
+    };
+  }
+
+  const NEUTRAL = {
+    dark:{ fill:'#5a5b64', text:'#f0f1f4' },
+    light:{ fill:'#aeb2bb', text:'#1c1e22' }
+  };
+
+  function currentTheme(){
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'dark' || attr === 'light') return attr;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  // cor da RAIZ — usa AppState.rootColor (customizável), com texto calculado
+  // automaticamente pra garantir contraste
+  function rootColorPair(){
+    const theme = currentTheme();
+    const hex = AppState.rootColor || DEFAULT_ROOT_COLOR;
+    return colorPairFromHex(hex)[theme];
+  }
+
+  // cor por ÍNDICE DE PALETA (não por profundidade absoluta) — permite herança do pai.
+  // a paleta agora vem de AppState.customPalette (editável pelo usuário no painel de Cores)
+  function colorByIndex(idx){
+    const theme = currentTheme();
+    if (idx === null || idx === undefined) return rootColorPair();
+    const palette = (AppState.customPalette && AppState.customPalette.length) ? AppState.customPalette : DEFAULT_PALETTE_HEX;
+    const hex = palette[idx % palette.length] || palette[0];
+    return colorPairFromHex(hex)[theme];
+  }
+
+  function capsuleWidth(node){
+    const nameLen = (node.name || 'Sem título').length;
+    return Math.max(MIN_CAPSULE_W, Math.round(nameLen * CHAR_W) + PAD_X * 2);
+  }
+
+  function buildHierarchy(){
+    const rootData = TreeModel.getRoot();
+    const root = d3.hierarchy(rootData, d => d.collapsed ? null : d.children);
+
+    // calcula o ÍNDICE DE COR de cada nó com base em RAMO (linhagem) + colorLevels.
+    // raiz = cor customizável própria (AppState.rootColor). Dentro da "zona de
+    // diferenciação" (profundidade <= AppState.colorLevels), cada NÓ recebe sua
+    // PRÓPRIA cor — diferente da cor dos seus irmãos — e essa cor se propaga por
+    // toda a sua descendência. Ou seja: com colorLevels=2, os filhos da raiz
+    // (nível 1) se diferenciam entre si, e cada um desses ramos carrega sua cor
+    // até o fim da árvore. A cor é amarrada à LINHAGEM (pai → filho), nunca à
+    // coluna/profundidade absoluta.
+    //
+    // REGRA IMPORTANTE: um nó nunca pode ter a MESMA cor do seu pai direto —
+    // isso evitaria dar a falsa impressão de que pai e filho fazem parte do
+    // mesmo "grupo" quando, na verdade, são nós distintos. Se o próximo índice
+    // da paleta coincidir com o do pai, pula pro seguinte automaticamente.
+    const palette = (AppState.customPalette && AppState.customPalette.length) ? AppState.customPalette : DEFAULT_PALETTE_HEX;
+    let paletteCounter = 0;
+    root.each(d => {
+      if (d.depth === 0) {
+        d._colorIdx = null;
+      } else if (d.depth <= AppState.colorLevels) {
+        // nasce uma cor nova e própria para este nó (dentro da zona de diferenciação)
+        let idx = paletteCounter % palette.length;
+        const parentIdx = d.parent ? d.parent._colorIdx : null;
+        if (parentIdx !== null && parentIdx !== undefined && idx === parentIdx && palette.length > 1) {
+          idx = (idx + 1) % palette.length; // nunca repete a cor do pai direto
+        }
+        d._colorIdx = idx;
+        paletteCounter++;
+      } else {
+        // além da zona: herda a cor do pai (continua o ramo)
+        d._colorIdx = d.parent._colorIdx;
+      }
+      d._w = capsuleWidth(d.data);
+    });
+
+    return root;
+  }
+
+  function computeLayout(){
+    const root = buildHierarchy();
+    const treeLayout = d3.tree()
+      .nodeSize([ROW_H, 0])
+      .separation((a, b) => 1);
+    treeLayout(root);
+
+    // posição horizontal: cada nível avança capsula + gap + círculo + LEVEL_GAP
+    const widthByDepth = {};
+    root.each(d => {
+      widthByDepth[d.depth] = Math.max(widthByDepth[d.depth] || 0, d._w || MIN_CAPSULE_W);
+    });
+    const xOffsetByDepth = {};
+    let acc = 0;
+    const maxDepth = Math.max(...root.descendants().map(d => d.depth));
+    for (let depth = 0; depth <= maxDepth; depth++){
+      xOffsetByDepth[depth] = acc;
+      // espaço deste nível: círculo + gap + cápsula + gap até o próximo nível
+      acc += CIRCLE_R * 2 + CAPSULE_GAP + (widthByDepth[depth] || MIN_CAPSULE_W) + LEVEL_GAP;
+    }
+    root.each(d => { d.y = xOffsetByDepth[d.depth]; });
+
+    let minX = Infinity, maxX = -Infinity, maxY = -Infinity, maxNodeWAtMaxY = MIN_CAPSULE_W;
+    root.each(d => {
+      if (d.x < minX) minX = d.x;
+      if (d.x > maxX) maxX = d.x;
+      if (d.y > maxY) { maxY = d.y; maxNodeWAtMaxY = d._w || MIN_CAPSULE_W; }
+    });
+    const offsetX = PADDING - minX;
+    root.each(d => { d.x += offsetX; d.y += PADDING; });
+
+    const totalW = maxY + CIRCLE_R * 2 + CAPSULE_GAP + maxNodeWAtMaxY + PADDING;
+    const totalH = (maxX - minX) + ROW_H + PADDING * 2;
+
+    return { root, totalW, totalH };
+  }
+
+  let lastRoot = null;
+  let previousRoot = null; // snapshot da árvore ANTES do render atual — usado
+                            // como referência estável para nós que estão saindo
+                            // (colapsando), já que lastRoot é sobrescrito antes
+                            // de renderNodes rodar.
+
+  function render(){
+    const { root, totalW, totalH } = computeLayout();
+    previousRoot = lastRoot;
+    lastRoot = root;
+
+    renderLinks(root);
+    renderNodes(root);
+
+    document.getElementById('empty-hint').style.display =
+      TreeModel.nodeCount() <= 1 && !TreeModel.getRoot().name ? 'block' : 'none';
+
+    if (typeof ProjectNameBar !== 'undefined') {
+      ProjectNameBar.markDirty();
+      ProjectNameBar.refresh();
+    }
+  }
+
+  // ponto de conexão: sai do CÍRCULO do pai (que fica à direita da cápsula
+  // do pai), entra na CÁPSULA do filho (lado esquerdo dela)
+  function linkPathGen(d){
+    const sourceW = d.source._w || MIN_CAPSULE_W;
+    const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+    const tx = d.target.y, ty = d.target.x;
+    const style = AppState.lineStyle;
+
+    if (style === 'straight') {
+      // cotovelo em ângulo reto: horizontal -> vertical -> horizontal
+      const mx = (sx + tx) / 2;
+      return `M${sx},${sy} H${mx} V${ty} H${tx}`;
+    }
+
+    if (style === 'rounded') {
+      // mesma rota do cotovelo, mas com cantos suavizados por arcos pequenos
+      const mx = (sx + tx) / 2;
+      const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(mx - sx) / 2, Math.abs(tx - mx) / 2);
+      if (r < 1 || sy === ty) {
+        // sem desnível vertical (ou raio degenerado): linha reta direta
+        return `M${sx},${sy} H${tx}`;
+      }
+      const goingDown = ty > sy;
+      const sweep1 = goingDown ? 1 : 0;
+      const sweep2 = goingDown ? 0 : 1;
+      return `M${sx},${sy} H${mx - r} A${r},${r} 0 0 ${sweep1} ${mx},${sy + (goingDown ? r : -r)} V${ty - (goingDown ? r : -r)} A${r},${r} 0 0 ${sweep2} ${mx + r},${ty} H${tx}`;
+    }
+
+    if (style === 'orthogonal') {
+      // híbrido: a PRIMEIRA dobra (saindo do pai, de horizontal pra vertical)
+      // fica em ângulo reto puro — igual ao modelo "Reto". A SEGUNDA dobra
+      // (chegando no filho, de vertical pra horizontal) fica arredondada —
+      // igual ao modelo "Arredondado". Mistura visual entre os dois estilos.
+      const mx = (sx + tx) / 2;
+      const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(tx - mx) / 2);
+      if (r < 1 || sy === ty) {
+        return `M${sx},${sy} H${tx}`;
+      }
+      const goingDown = ty > sy;
+      const sweep2 = goingDown ? 0 : 1;
+      return `M${sx},${sy} H${mx} V${ty - (goingDown ? r : -r)} A${r},${r} 0 0 ${sweep2} ${mx + r},${ty} H${tx}`;
+    }
+
+    // 'smooth' (padrão) — curva Bézier suave
+    const mx = (sx + tx) / 2;
+    return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
+  }
+
+  // duração de cada fase da animação de expandir/colapsar
+  const ANIM_MS = 380;
+  const ANIM_EASE = d3.easeCubicInOut;
+
+  function renderLinks(root){
+    const links = root.links();
+    let g = zoomLayer.select('g.links-layer');
+    if (g.empty()) g = zoomLayer.append('g').attr('class', 'links-layer');
+
+    const sel = g.selectAll('path.link-path')
+      .data(links, d => d.target.data.id);
+
+    // saída: encolhe o traço até o ponto de origem (pai) antes de sumir,
+    // numa única transição suave
+    sel.exit()
+      .transition().duration(ANIM_MS).ease(ANIM_EASE)
+      .attr('d', d => {
+        const sourceW = d.source._w || MIN_CAPSULE_W;
+        const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+        return `M${sx},${sy} C${sx},${sy} ${sx},${sy} ${sx},${sy}`;
+      })
+      .remove();
+
+    const enter = sel.enter()
+      .append('path')
+      .attr('class', 'link-path')
+      .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
+      .attr('d', d => {
+        // nasce "grudado" na origem (pai), sem comprimento ainda
+        const sourceW = d.source._w || MIN_CAPSULE_W;
+        const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+        return `M${sx},${sy} C${sx},${sy} ${sx},${sy} ${sx},${sy}`;
+      });
+
+    enter.merge(sel)
+      .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
+      .transition().duration(ANIM_MS).ease(ANIM_EASE)
+      .attr('d', linkPathGen);
+  }
+
+  function renderNodes(root){
+    let g = zoomLayer.select('g.nodes-layer');
+    if (g.empty()) g = zoomLayer.append('g').attr('class', 'nodes-layer');
+
+    const nodes = root.descendants();
+    const sel = g.selectAll('g.node-wrapper')
+      .data(nodes, d => d.data.id);
+
+    // posição do PAI de um nó que está entrando/saindo — ponto de origem/destino
+    // da transição. Nasce no pai e anima direto (X e Y juntos) até a posição
+    // final — uma única curva suave, sem fases separadas, similar ao efeito
+    // do markmap.
+    //
+    // IMPORTANTE: para nós SAINDO (colapsando), não confiamos em d.parent —
+    // a hierarquia D3 é reconstruída a cada render e, com múltiplos nós
+    // saindo/entrando ao mesmo tempo em ramos diferentes, a referência de
+    // parent pode ficar incerta. Em vez disso, usamos o ID real do pai (via
+    // TreeModel, fonte de verdade dos dados) e procuramos a posição exata
+    // desse pai na árvore ANTERIOR (previousRoot), que ainda é estável.
+    function parentAnchor(d, useDataRoot){
+      const parentData = TreeModel.findParent(d.data.id);
+      if (!parentData) return { x: d.x, y: d.y };
+      const refRoot = useDataRoot || lastRoot;
+      if (refRoot) {
+        const foundParent = refRoot.descendants().find(n => n.data.id === parentData.id);
+        if (foundParent) return { x: foundParent.x, y: foundParent.y, w: foundParent._w || MIN_CAPSULE_W };
+      }
+      // fallback: d.parent da própria hierarquia D3 (caso a busca acima falhe)
+      if (d.parent) return { x: d.parent.x, y: d.parent.y, w: d.parent._w || MIN_CAPSULE_W };
+      return { x: d.x, y: d.y };
+    }
+
+    // SAÍDA (colapsar): anima direto da posição atual até a posição do pai
+    // (X e Y simultaneamente), com fade, e desaparece — transição única.
+    sel.exit()
+      .transition().duration(ANIM_MS).ease(ANIM_EASE)
+      .attr('transform', function(d){
+        const anchor = parentAnchor(d, previousRoot);
+        return `translate(${anchor.y},${anchor.x})`;
+      })
+      .style('opacity', 0)
+      .remove();
+
+    const enter = sel.enter()
+      .append('g')
+      .attr('class', 'node-wrapper')
+      .attr('data-node-id', d => d.data.id)
+      .attr('transform', d => {
+        const anchor = parentAnchor(d);
+        return `translate(${anchor.y},${anchor.x})`;
+      })
+      .style('opacity', 0);
+
+    const merged = enter.merge(sel);
+
+    merged.attr('data-node-id', d => d.data.id);
+
+    // ENTRADA (expandir): nasce na posição do pai e anima direto (X e Y
+    // juntos) até a posição final — transição única e suave.
+    enter
+      .transition().duration(ANIM_MS).ease(ANIM_EASE)
+      .style('opacity', 1)
+      .attr('transform', d => `translate(${d.y},${d.x})`);
+
+    // nós que já existiam e só mudaram de posição (ex: irmão novo inserido)
+    sel.transition().duration(ANIM_MS).ease(ANIM_EASE)
+      .attr('transform', d => `translate(${d.y},${d.x})`);
+
+    merged.each(function(d){
+      drawNodeContent(d3.select(this), d);
+    });
+  }
+
+  function drawNodeContent(sel, d){
+    sel.selectAll('*').remove();
+    const node = d.data;
+    const isFocused = node.id === AppState.focusedNodeId;
+    const w = d._w || MIN_CAPSULE_W;
+    const color = colorByIndex(d._colorIdx);
+    const hasChildren = node.children && node.children.length > 0;
+    const isOpen = hasChildren && !node.collapsed;
+    const capH = getCapsuleH();
+    const capRadius = getContainerRadius(capH);
+
+    // ---- CÁPSULA (título, clicável para editar/visualizar) — fica na origem (0,0) ----
+    const capsuleGroup = sel.append('g')
+      .attr('class', 'tree-capsule' + (isFocused ? ' focused' : ''))
+      .attr('transform', `translate(0, ${-capH / 2})`)
+      .on('click', (ev) => {
+        ev.stopPropagation();
+        NodeInteraction.onCapsuleClick(node.id);
+      });
+
+    capsuleGroup.append('rect')
+      .attr('class', 'capsule-rect')
+      .attr('width', w)
+      .attr('height', capH)
+      .attr('rx', capRadius)
+      .attr('fill', color.fill);
+
+    capsuleGroup.append('text')
+      .attr('class', 'capsule-label')
+      .attr('x', w / 2)
+      .attr('y', capH / 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', color.text)
+      .text(truncate(node.name || 'Sem título', 50));
+
+    // ---- linha curta conectando cápsula ao círculo (nó) ----
+    const circleX = w + CAPSULE_GAP + CIRCLE_R;
+    sel.append('line')
+      .attr('x1', w).attr('y1', 0)
+      .attr('x2', circleX - CIRCLE_R).attr('y2', 0)
+      .attr('stroke', color.fill)
+      .attr('stroke-width', 2);
+
+    // ---- NÓ (círculo clicável) — fica à DIREITA da cápsula, controla expandir/colapsar OS FILHOS deste nó ----
+    const circleGroup = sel.append('g')
+      .attr('class', 'tree-node-circle' + (isFocused ? ' focused' : '') + (hasChildren ? ' has-children' : ''))
+      .attr('transform', `translate(${circleX}, 0)`)
+      .on('click', (ev) => {
+        ev.stopPropagation();
+        NodeInteraction.onCircleClick(node.id);
+      });
+
+    circleGroup.append('circle')
+      .attr('class', 'circle-base')
+      .attr('r', CIRCLE_R)
+      .attr('fill', hasChildren ? color.fill : 'var(--panel)')
+      .attr('stroke', color.fill)
+      .attr('stroke-width', 2);
+
+    // indicador visual de expandir/colapsar (só quando tem filhos)
+    if (hasChildren) {
+      if (!isOpen) {
+        // "+" pequeno dentro do círculo = tem filhos ocultos
+        circleGroup.append('line').attr('class', 'circle-glyph')
+          .attr('x1', -3.5).attr('y1', 0).attr('x2', 3.5).attr('y2', 0);
+        circleGroup.append('line').attr('class', 'circle-glyph')
+          .attr('x1', 0).attr('y1', -3.5).attr('x2', 0).attr('y2', 3.5);
+      } else {
+        // "−" dentro do círculo = filhos visíveis, clique colapsa
+        circleGroup.append('line').attr('class', 'circle-glyph')
+          .attr('x1', -3.5).attr('y1', 0).attr('x2', 3.5).attr('y2', 0);
+      }
+    }
+
+    // ---- botão de adicionar filho (só modo edição) — fica depois do círculo ----
+    if (AppState.mode === 'edit') {
+      const addBtnX = circleX + CIRCLE_R + 26;
+      sel.append('line')
+        .attr('x1', circleX + CIRCLE_R).attr('y1', 0)
+        .attr('x2', addBtnX - 14).attr('y2', 0)
+        .attr('stroke', 'var(--border-light)')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '2,3');
+
+      const addBtn = sel.append('g')
+        .attr('class', 'add-btn-group')
+        .attr('transform', `translate(${addBtnX}, 0)`)
+        .on('click', (ev) => {
+          ev.stopPropagation();
+          NodeInteraction.onAddChild(node.id);
+        });
+      addBtn.append('circle').attr('class', 'add-btn-circle').attr('r', 12);
+      addBtn.append('line').attr('class', 'add-btn-plus')
+        .attr('x1', -5).attr('y1', 0).attr('x2', 5).attr('y2', 0);
+      addBtn.append('line').attr('class', 'add-btn-plus')
+        .attr('x1', 0).attr('y1', -5).attr('x2', 0).attr('y2', 5);
+    }
+  }
+
+  function truncate(str, max){
+    if (!str) return '';
+    return str.length > max ? str.slice(0, max - 1) + '…' : str;
+  }
+
+  function getNodeScreenPos(id){
+    if (!lastRoot) return null;
+    const found = lastRoot.descendants().find(d => d.data.id === id);
+    if (!found) return null;
+    const w = found._w || MIN_CAPSULE_W;
+    const totalW = CIRCLE_R * 2 + CAPSULE_GAP + w;
+    const capH = getCapsuleH();
+    return { x: found.y - CIRCLE_R, y: found.x - capH / 2, w: totalW, h: capH };
+  }
+
+  function focusOn(idList, opts){
+    // idList tipicamente [pai, atual]. O nó ATUAL (último da lista) é sempre
+    // o que fica centralizado na tela, mantendo o nível de zoom atual (a
+    // menos que opts.scale seja passado). O(s) outro(s) só influenciam o
+    // enquadramento se isso não empurrar o nó atual pra fora do centro.
+    const positions = idList.map(getNodeScreenPos).filter(Boolean);
+    if (!positions.length) return;
+
+    const current = positions[positions.length - 1];
+    const currentCenterX = current.x + current.w / 2;
+    const currentCenterY = current.y + current.h / 2;
+
+    const viewW = wrap.clientWidth;
+    const viewH = wrap.clientHeight;
+    const k = (opts && opts.scale) || currentTransform.k;
+
+    let targetCenterX = currentCenterX;
+    let targetCenterY = currentCenterY;
+
+    if (positions.length > 1) {
+      const others = positions.slice(0, -1);
+      const minX = Math.min(current.x, ...others.map(p => p.x));
+      const maxX = Math.max(current.x + current.w, ...others.map(p => p.x + p.w));
+      const minY = Math.min(current.y, ...others.map(p => p.y));
+      const maxY = Math.max(current.y + current.h, ...others.map(p => p.y + p.h));
+
+      const spanW = (maxX - minX) * k;
+      const spanH = (maxY - minY) * k;
+
+      if (spanW + 80 <= viewW) targetCenterX = (minX + maxX) / 2;
+      if (spanH + 80 <= viewH) targetCenterY = (minY + maxY) / 2;
+    }
+
+    const tx = viewW / 2 - targetCenterX * k;
+    const ty = viewH / 2 - targetCenterY * k;
+    zoomTo(d3.zoomIdentity.translate(tx, ty).scale(k), 450);
+  }
+
+  function fitToScreen(){
+    // calcula a bounding box de TODOS os nós visíveis e ajusta translate+scale
+    // pra caber tudo na viewport, com uma margem confortável
+    if (!lastRoot) return;
+    const nodes = lastRoot.descendants();
+    if (!nodes.length) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(d => {
+      const pos = getNodeScreenPos(d.data.id);
+      if (!pos) return;
+      minX = Math.min(minX, pos.x);
+      maxX = Math.max(maxX, pos.x + pos.w);
+      minY = Math.min(minY, pos.y);
+      maxY = Math.max(maxY, pos.y + pos.h);
+    });
+
+    const treeW = maxX - minX;
+    const treeH = maxY - minY;
+    const TOPBAR_H = 56; // altura da topbar — desconta da área útil pra não centralizar atrás dela
+    const viewW = wrap.clientWidth;
+    const viewH = wrap.clientHeight - TOPBAR_H;
+    const MARGIN = 64;
+
+    const scaleX = (viewW - MARGIN * 2) / treeW;
+    const scaleY = (viewH - MARGIN * 2) / treeH;
+    const k = Math.min(scaleX, scaleY, ZOOM_MAX);
+    const kClamped = Math.max(k, ZOOM_MIN);
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const tx = viewW / 2 - centerX * kClamped;
+    const ty = TOPBAR_H + viewH / 2 - centerY * kClamped;
+
+    zoomTo(d3.zoomIdentity.translate(tx, ty).scale(kClamped), 450);
+  }
+
+  function getNodeAbsoluteCenter(id){
+    // posição do nó em coordenadas de MUNDO (antes do zoom/pan) — usada pela busca
+    const pos = getNodeScreenPos(id);
+    if (!pos) return null;
+    return { x: pos.x + pos.w / 2, y: pos.y + pos.h / 2 };
+  }
+
+  return {
+    render, colorByIndex, focusOn, fitToScreen, getNodeScreenPos, getNodeAbsoluteCenter,
+    zoomBy, zoomTo, capsuleWidth, getCapsuleH, CIRCLE_R,
+    get zoomScale(){ return currentTransform.k; },
+    get ZOOM_MIN(){ return ZOOM_MIN; },
+    get ZOOM_MAX(){ return ZOOM_MAX; }
+  };
+})();
+
+/* =========================================================
+   INTERAÇÃO COM NÓS (cliques, criação, edição, visualização)
+   ========================================================= */
+const NodeInteraction = (() => {
+
+  /* clique no NÓ (círculo) — expande/colapsa os filhos */
+  function onCircleClick(nodeId){
+    const node = TreeModel.findNode(nodeId);
+    if (!node) return;
+    if (node.children.length === 0) return; // nada a expandir
+    TreeModel.toggleCollapsed(nodeId);
+    AppState.focusedNodeId = nodeId;
+    Renderer.render();
+    Renderer.focusOn([nodeId]);
+  }
+
+  /* clique na CÁPSULA (título) — edita (modo edição) ou visualiza (modo visualização) */
+  function onCapsuleClick(nodeId){
+    if (AppState.mode === 'edit') {
+      openEditModal(nodeId, false);
+    } else {
+      const parentId = TreeModel.findParent(nodeId)?.id || null;
+      AppState.focusedNodeId = nodeId;
+      Renderer.render();
+      Renderer.focusOn(parentId ? [parentId, nodeId] : [nodeId]);
+      openViewPanel(nodeId);
+    }
+  }
+
+  /* clique no botão de "+" — cria nó filho vazio, SEM abrir modal automaticamente */
+  function onAddChild(parentId){
+    const child = TreeModel.addChild(parentId, '', '');
+    TreeModel.updateNode(parentId, { collapsed: false }); // garante que o novo filho fique visível
+    AppState.focusedNodeId = child.id;
+    Renderer.render();
+    requestAnimationFrame(() => {
+      Renderer.focusOn([parentId, child.id]);
+    });
+  }
+
+  function onEditNode(nodeId){
+    openEditModal(nodeId, false);
+  }
+
+  /* ---------- MODAL DE EDIÇÃO (nome + texto) ---------- */
+  function openEditModal(nodeId, isNew){
+    const node = TreeModel.findNode(nodeId);
+    if (!node) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'mt-overlay';
+    overlay.innerHTML = `
+      <div class="mt-modal">
+        <div class="mt-modal-head">
+          <span>${isNew ? 'Novo nó' : 'Editar nó'}</span>
+          <button class="mt-x" data-action="close">&times;</button>
+        </div>
+        <div class="mt-modal-body">
+          <label class="mt-label">Nome</label>
+          <input type="text" class="mt-input" id="mt-field-name" placeholder="Título curto" maxlength="60" value="${escapeAttr(node.name)}" />
+          <label class="mt-label">Texto</label>
+          <textarea class="mt-textarea" id="mt-field-text" placeholder="Descrição, detalhes...">${escapeHtml(node.text)}</textarea>
+        </div>
+        <div class="mt-modal-foot">
+          ${!isNew && node.id !== TreeModel.getRoot().id ? '<button class="mt-btn danger" data-action="delete">Excluir nó</button>' : '<span></span>'}
+          <button class="mt-btn primary" data-action="save">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const nameInput = overlay.querySelector('#mt-field-name');
+    const textInput = overlay.querySelector('#mt-field-text');
+    nameInput.focus();
+    nameInput.select();
+
+    function close(){ overlay.remove(); }
+
+    function save(){
+      const name = nameInput.value.trim();
+      const text = textInput.value.trim();
+      TreeModel.updateNode(nodeId, { name: name || 'Sem nome', text });
+      AppState.focusedNodeId = nodeId;
+      close();
+      Renderer.render();
+      const parentId = TreeModel.findParent(nodeId)?.id;
+      Renderer.focusOn(parentId ? [parentId, nodeId] : [nodeId]);
+      SheetPanel.refresh();
+    }
+
+    overlay.addEventListener('click', (ev) => {
+      const action = ev.target.dataset.action;
+      if (ev.target === overlay || action === 'close') {
+        close();
+        Renderer.render();
+      } else if (action === 'save') {
+        save();
+      } else if (action === 'delete') {
+        if (confirm('Excluir este nó e todos os seus destinos?')) {
+          TreeModel.removeNode(nodeId);
+          AppState.focusedNodeId = null;
+          close();
+          Renderer.render();
+          SheetPanel.refresh();
+        }
+      }
+    });
+
+    overlay.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { close(); Renderer.render(); }
+      if (ev.key === 'Enter' && ev.ctrlKey) save();
+    });
+  }
+
+  /* ---------- PAINEL DE VISUALIZAÇÃO (nome + texto + filhos) ---------- */
+  function openViewPanel(nodeId, history){
+    history = history || [];
+    const node = TreeModel.findNode(nodeId);
+    if (!node) return;
+
+    let panel = document.getElementById('mt-view-panel');
+    if (panel) panel.remove();
+
+    panel = document.createElement('div');
+    panel.id = 'mt-view-panel';
+    panel.className = 'mt-overlay mt-view-overlay';
+
+    const childrenHtml = node.children.length
+      ? node.children.map(c => `
+          <div class="mt-child-row" data-child-id="${c.id}">
+            <div class="mt-child-main">
+              <div class="mt-child-name">${escapeHtml(c.name || '(sem nome)')}</div>
+              ${c.text ? `<div class="mt-child-text">${escapeHtml(truncate(c.text, 80))}</div>` : ''}
+            </div>
+            ${c.children.length ? `<span class="mt-child-count">${c.children.length}</span>` : ''}
+            <svg class="mt-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+        `).join('')
+      : '<div class="mt-empty-children">Este nó não tem destinos.</div>';
+
+    const backBtnHtml = history.length
+      ? `<button class="mt-back" data-action="back" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>`
+      : '';
+
+    panel.innerHTML = `
+      <div class="mt-view-panel">
+        <div class="mt-modal-head">
+          <div class="mt-modal-head-left">
+            ${backBtnHtml}
+            <span>${escapeHtml(node.name || '(sem nome)')}</span>
+          </div>
+          <button class="mt-x" data-action="close">&times;</button>
+        </div>
+        <div class="mt-modal-body">
+          ${node.text ? `<p class="mt-view-text">${escapeHtml(node.text)}</p>` : '<p class="mt-view-text mt-faint">Sem descrição.</p>'}
+          <div class="mt-children-title">Destinos (${node.children.length})</div>
+          <div class="mt-children-list">${childrenHtml}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    panel.addEventListener('click', (ev) => {
+      const backBtn = ev.target.closest('[data-action="back"]');
+      if (backBtn) {
+        const prevId = history[history.length - 1];
+        const newHistory = history.slice(0, -1);
+        panel.remove();
+        AppState.focusedNodeId = prevId;
+        Renderer.render();
+        const prevParentId = TreeModel.findParent(prevId)?.id;
+        Renderer.focusOn(prevParentId ? [prevParentId, prevId] : [prevId]);
+        openViewPanel(prevId, newHistory);
+        return;
+      }
+      const childRow = ev.target.closest('.mt-child-row');
+      if (childRow) {
+        const childId = childRow.dataset.childId;
+        panel.remove();
+        AppState.focusedNodeId = childId;
+        Renderer.render();
+        Renderer.focusOn([nodeId, childId]);
+        openViewPanel(childId, [...history, nodeId]);
+        return;
+      }
+      if (ev.target === panel || ev.target.dataset.action === 'close') {
+        panel.remove();
+      }
+    });
+  }
+
+  function truncate(str, max){
+    if (!str) return '';
+    return str.length > max ? str.slice(0, max - 1) + '…' : str;
+  }
+  function escapeHtml(str){
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function escapeAttr(str){
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  return { onAddChild, onEditNode, onCircleClick, onCapsuleClick, openEditModal, openViewPanel };
+})();
+
+/* =========================================================
+   PAINEL PLANILHA (drawer lateral, editável, reflete na árvore)
+   Formato: cada linha = um nó. Colunas = nível 1, nível 2, ... nível N.
+   Uma coluna extra mostra "origem" (nó pai).
+   ========================================================= */
+const SheetPanel = (() => {
+  const drawer = document.getElementById('sheet-drawer');
+  const overlay = document.getElementById('sheet-overlay');
+  const table = document.getElementById('sheet-table');
+  const info = document.getElementById('sheet-info');
+
+  function flattenRows(){
+    // gera uma linha por nó, com o nome posicionado na coluna do seu nível
+    const rows = [];
+    function walk(node, depth, parentId){
+      rows.push({ id: node.id, parentId, depth, name: node.name, text: node.text });
+      node.children.forEach(c => walk(c, depth + 1, node.id));
+    }
+    walk(TreeModel.getRoot(), 0, null);
+    return rows;
+  }
+
+  function render(){
+    const rows = flattenRows();
+    const maxDepth = TreeModel.maxDepth();
+    const colCount = maxDepth + 1;
+
+    let html = '<thead><tr>';
+    for (let i = 0; i < colCount; i++){
+      const colName = getColumnName(i + 1);
+      html += `<th><input class="sheet-header-input" data-level="${i + 1}" value="${escapeAttr(colName)}" /></th>`;
+    }
+    html += '<th>Texto</th><th>Origem</th></tr></thead><tbody>';
+
+    rows.forEach(row => {
+      html += '<tr data-node-id="' + row.id + '">';
+      for (let i = 0; i < colCount; i++){
+        if (i === row.depth){
+          html += `<td><input class="sheet-cell-input" data-field="name" data-node-id="${row.id}" value="${escapeAttr(row.name)}" placeholder="Nome" /></td>`;
+        } else {
+          html += '<td class="sheet-cell-empty"></td>';
+        }
+      }
+      html += `<td><textarea class="sheet-cell-input" data-field="text" data-node-id="${row.id}" rows="1" placeholder="Texto...">${escapeHtml(row.text)}</textarea></td>`;
+      const parentName = row.parentId ? (TreeModel.findNode(row.parentId)?.name || '—') : '—';
+      html += `<td class="sheet-rel-col">${row.parentId ? escapeHtml(parentName) : 'raiz'}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    info.textContent = `${rows.length} nó(s) · ${colCount} nível(is)`;
+  }
+
+  function bindEvents(){
+    table.addEventListener('input', (ev) => {
+      const target = ev.target;
+      if (target.classList.contains('sheet-header-input')) {
+        const level = parseInt(target.dataset.level, 10);
+        AppState.columnNames[level - 1] = target.value;
+        Renderer.render(); // labels de nível podem aparecer em outros lugares no futuro
+        return;
+      }
+      if (!target.dataset.nodeId) return;
+      const nodeId = target.dataset.nodeId;
+      const field = target.dataset.field;
+      TreeModel.updateNode(nodeId, { [field]: target.value });
+      Renderer.render();
+    });
+
+    document.getElementById('sheet-close').addEventListener('click', close);
+    overlay.addEventListener('click', close);
+  }
+
+  function open(){
+    render();
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function close(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+  function refresh(){
+    if (drawer.classList.contains('open')) render();
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function escapeAttr(str){
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  bindEvents();
+  return { open, close, refresh, flattenRows };
+})();
+
+/* =========================================================
+   PAINEL DE ESTILO (drawer lateral — formato, altura, linhas)
+   ========================================================= */
+const StylePanel = (() => {
+  const drawer = document.getElementById('style-drawer');
+  const overlay = document.getElementById('style-overlay');
+
+  function syncActiveStates(){
+    document.querySelectorAll('[data-shape]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.shape === AppState.containerShape);
+    });
+    document.querySelectorAll('[data-height]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.height === AppState.containerHeight);
+    });
+    document.querySelectorAll('[data-line]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.line === AppState.lineStyle);
+    });
+  }
+
+  function bindEvents(){
+    document.querySelectorAll('[data-shape]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AppState.containerShape = btn.dataset.shape;
+        syncActiveStates();
+        Renderer.render();
+      });
+    });
+    document.querySelectorAll('[data-height]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AppState.containerHeight = btn.dataset.height;
+        syncActiveStates();
+        Renderer.render();
+      });
+    });
+    document.querySelectorAll('[data-line]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AppState.lineStyle = btn.dataset.line;
+        syncActiveStates();
+        Renderer.render();
+      });
+    });
+
+    document.getElementById('style-close').addEventListener('click', close);
+    overlay.addEventListener('click', close);
+  }
+
+  function open(){
+    syncActiveStates();
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function close(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  bindEvents();
+  return { open, close };
+})();
+
+/* =========================================================
+   GERENCIADOR DE PROJETOS (lista nomeada salva no navegador)
+   ========================================================= */
+const ProjectManager = (() => {
+  const STORAGE_KEY = 'mindtree-projects';
+  const drawer = document.getElementById('projects-drawer');
+  const overlay = document.getElementById('projects-overlay');
+  const listEl = document.getElementById('projects-list');
+
+  let currentProjectId = null; // id do projeto atualmente carregado, se houver
+
+  function loadAll(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveAll(projects){
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      return true;
+    } catch (e) {
+      alert('Não foi possível salvar: armazenamento local indisponível ou cheio.');
+      return false;
+    }
+  }
+
+  function genId(){
+    return 'p' + Date.now() + Math.random().toString(36).slice(2, 7);
+  }
+
+  function formatDate(ts){
+    const d = new Date(ts);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function snapshotState(){
+    return {
+      tree: TreeModel.getRoot(),
+      colorLevels: AppState.colorLevels,
+      containerShape: AppState.containerShape,
+      containerHeight: AppState.containerHeight,
+      lineStyle: AppState.lineStyle,
+      columnNames: AppState.columnNames,
+      customPalette: AppState.customPalette,
+      rootColor: AppState.rootColor,
+    };
+  }
+
+  function saveAsNew(forcedName){
+    const defaultName = TreeModel.getRoot().name || 'Projeto sem nome';
+    let trimmed;
+    if (forcedName !== undefined) {
+      trimmed = forcedName;
+    } else {
+      const name = prompt('Nome do projeto:', defaultName);
+      if (name === null) return; // cancelado
+      trimmed = name.trim() || defaultName;
+    }
+
+    const projects = loadAll();
+    const entry = {
+      id: genId(),
+      name: trimmed,
+      savedAt: Date.now(),
+      state: snapshotState(),
+    };
+    projects.unshift(entry);
+    if (saveAll(projects)) {
+      currentProjectId = entry.id;
+      render();
+      ProjectNameBar.markClean();
+      ProjectNameBar.refresh();
+      Toast.show('Projeto salvo');
+    }
+  }
+
+  // "Salvar" — se já existe um projeto carregado, sobrescreve ELE diretamente
+  // (sem perguntar nome de novo). Se não há nenhum projeto carregado ainda
+  // (árvore nova, nunca salva), comporta-se como "salvar como": pede um nome
+  // e cria a primeira entrada na lista.
+  function save(){
+    if (currentProjectId) {
+      const projects = loadAll();
+      const exists = projects.some(p => p.id === currentProjectId);
+      if (exists) {
+        overwrite(currentProjectId);
+        return;
+      }
+      // projeto foi excluído da lista por fora — trata como novo
+      currentProjectId = null;
+    }
+    saveAsNew();
+  }
+
+  // "Salvar como" — sempre pede um nome novo e cria uma cópia/nova entrada,
+  // independente de já existir um projeto carregado.
+  function saveAs(){
+    saveAsNew();
+  }
+
+  function overwrite(id){
+    const projects = loadAll();
+    const idx = projects.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    projects[idx].state = snapshotState();
+    projects[idx].savedAt = Date.now();
+    if (saveAll(projects)) {
+      currentProjectId = id;
+      render();
+      ProjectNameBar.markClean();
+      ProjectNameBar.refresh();
+      Toast.show('Projeto salvo');
+    }
+  }
+
+  function loadProject(id){
+    const projects = loadAll();
+    const entry = projects.find(p => p.id === id);
+    if (!entry) return;
+
+    TreeModel.setRoot(entry.state.tree);
+    AppState.colorLevels = entry.state.colorLevels ?? AppState.colorLevels;
+    AppState.containerShape = entry.state.containerShape ?? AppState.containerShape;
+    AppState.containerHeight = entry.state.containerHeight ?? AppState.containerHeight;
+    AppState.lineStyle = entry.state.lineStyle ?? AppState.lineStyle;
+    AppState.columnNames = entry.state.columnNames ?? [];
+    AppState.customPalette = (entry.state.customPalette && entry.state.customPalette.length) ? entry.state.customPalette : [...DEFAULT_PALETTE_HEX];
+    AppState.rootColor = entry.state.rootColor || DEFAULT_ROOT_COLOR;
+    AppState.focusedNodeId = null;
+
+    currentProjectId = id;
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+    SheetPanel.refresh();
+    ProjectNameBar.markClean();
+    ProjectNameBar.refresh();
+    close();
+  }
+
+  function renameProject(id){
+    const projects = loadAll();
+    const entry = projects.find(p => p.id === id);
+    if (!entry) return;
+    const name = prompt('Novo nome do projeto:', entry.name);
+    if (name === null) return;
+    entry.name = name.trim() || entry.name;
+    saveAll(projects);
+    render();
+    if (id === currentProjectId) ProjectNameBar.refresh();
+  }
+
+  function deleteProject(id){
+    const projects = loadAll();
+    const entry = projects.find(p => p.id === id);
+    if (!entry) return;
+    if (!confirm(`Excluir o projeto "${entry.name}"? Essa ação não pode ser desfeita.`)) return;
+    const filtered = projects.filter(p => p.id !== id);
+    saveAll(filtered);
+    if (currentProjectId === id) {
+      currentProjectId = null;
+      ProjectNameBar.refresh();
+    }
+    render();
+  }
+
+  function render(){
+    const projects = loadAll();
+    if (!projects.length) {
+      listEl.innerHTML = '<div class="projects-empty">Nenhum projeto salvo ainda.</div>';
+      return;
+    }
+    listEl.innerHTML = projects.map(p => `
+      <div class="project-row${p.id === currentProjectId ? ' current' : ''}" data-id="${p.id}">
+        <div class="project-row-main">
+          <div class="project-row-name">${escapeHtml(p.name)}</div>
+          <div class="project-row-meta">${formatDate(p.savedAt)}</div>
+        </div>
+        <div class="project-row-actions">
+          <button class="project-action-btn" data-action="overwrite" data-id="${p.id}" title="Atualizar com o estado atual">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+          </button>
+          <button class="project-action-btn" data-action="rename" data-id="${p.id}" title="Renomear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="project-action-btn danger" data-action="delete" data-id="${p.id}" title="Excluir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function getCurrentProjectName(){
+    if (!currentProjectId) return null;
+    const projects = loadAll();
+    const entry = projects.find(p => p.id === currentProjectId);
+    return entry ? entry.name : null;
+  }
+
+  function getCurrentProjectId(){ return currentProjectId; }
+
+  function clearCurrentProject(){
+    currentProjectId = null;
+    ProjectNameBar.refresh();
+  }
+
+  function startNewProject(){
+    if (!confirm('Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) return;
+    TreeModel.setRoot(TreeModel.createNode('Novo projeto', ''));
+    AppState.focusedNodeId = null;
+    AppState.colorLevels = 4;
+    AppState.containerShape = 'capsule';
+    AppState.containerHeight = 'max';
+    AppState.lineStyle = 'smooth';
+    AppState.columnNames = [];
+    AppState.customPalette = [...DEFAULT_PALETTE_HEX];
+    AppState.rootColor = DEFAULT_ROOT_COLOR;
+    currentProjectId = null;
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+    SheetPanel.refresh();
+    ProjectNameBar.markClean();
+    ProjectNameBar.refresh();
+    close();
+  }
+
+  function bindEvents(){
+    document.getElementById('btn-new-project').addEventListener('click', startNewProject);
+    document.getElementById('btn-save-project').addEventListener('click', save);
+    document.getElementById('btn-save-as-project').addEventListener('click', saveAs);
+    document.getElementById('projects-close').addEventListener('click', close);
+    overlay.addEventListener('click', close);
+
+    listEl.addEventListener('click', (ev) => {
+      const actionBtn = ev.target.closest('[data-action]');
+      if (actionBtn) {
+        ev.stopPropagation();
+        const id = actionBtn.dataset.id;
+        const action = actionBtn.dataset.action;
+        if (action === 'overwrite') {
+          if (confirm('Atualizar este projeto salvo com o estado atual da árvore?')) overwrite(id);
+        } else if (action === 'rename') {
+          renameProject(id);
+        } else if (action === 'delete') {
+          deleteProject(id);
+        }
+        return;
+      }
+      const row = ev.target.closest('.project-row');
+      if (row) loadProject(row.dataset.id);
+    });
+  }
+
+  function open(){
+    render();
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function close(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  bindEvents();
+  return { open, close, save, saveAs, startNewProject, getCurrentProjectName, getCurrentProjectId, clearCurrentProject };
+})();
+
+/* =========================================================
+   BARRA DE NOME DO PROJETO (topo, centralizada)
+   Mostra qual projeto está carregado e atualiza o label do botão Salvar
+   pra deixar claro que "Salvar" vai sobrescrever esse projeto específico.
+   ========================================================= */
+const ProjectNameBar = (() => {
+  const textEl = document.getElementById('project-name-text');
+  const unsavedEl = document.getElementById('project-name-unsaved');
+  let dirty = false; // true quando há alterações desde o último save
+
+  function refresh(){
+    const name = ProjectManager.getCurrentProjectName();
+    if (name) {
+      textEl.textContent = name;
+    } else {
+      textEl.textContent = TreeModel.getRoot().name || 'Sem título';
+    }
+    const saveLabel = document.getElementById('btn-save-project-label');
+    if (saveLabel) {
+      saveLabel.textContent = name ? 'Salvar' : 'Salvar projeto';
+    }
+    unsavedEl.classList.toggle('show', dirty);
+
+    const saveBtn = document.getElementById('btn-save-project');
+    if (saveBtn) {
+      saveBtn.disabled = !dirty;
+      saveBtn.classList.toggle('is-disabled', !dirty);
+    }
+  }
+
+  function markDirty(){
+    if (!dirty) {
+      dirty = true;
+      unsavedEl.classList.add('show');
+      const saveBtn = document.getElementById('btn-save-project');
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-disabled'); }
+    }
+  }
+  function markClean(){
+    dirty = false;
+    unsavedEl.classList.remove('show');
+    const saveBtn = document.getElementById('btn-save-project');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-disabled'); }
+  }
+
+  return { refresh, markDirty, markClean };
+})();
+
+/* =========================================================
+   TOAST (mensagem rápida de confirmação, some sozinha)
+   ========================================================= */
+const Toast = (() => {
+  const el = document.getElementById('save-toast');
+  let hideTimer = null;
+  const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
+
+  function show(message, duration){
+    duration = duration ?? 2200;
+    el.innerHTML = checkIcon + '<span>' + message + '</span>';
+    el.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      el.classList.remove('show');
+    }, duration);
+  }
+
+  return { show };
+})();
+
+/* =========================================================
+   SELETOR DE CORES (popover)
+   ========================================================= */
+const ColorSelector = (() => {
+  const drawer = document.getElementById('color-drawer');
+  const overlay = document.getElementById('color-overlay');
+  const levelButtonsWrap = document.getElementById('color-level-buttons');
+  const rootColorInput = document.getElementById('root-color-input');
+  const rootColorHex = document.getElementById('root-color-hex');
+  const rootColorReset = document.getElementById('root-color-reset');
+  const paletteList = document.getElementById('color-palette-list');
+  const addBtn = document.getElementById('color-add-btn');
+  const MAX_LEVELS = 6;
+
+  function normalizeHex(v){
+    v = (v || '').trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) return v.toLowerCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+      const h = v.slice(1);
+      return '#' + h.split('').map(c => c + c).join('').toLowerCase();
+    }
+    return null;
+  }
+
+  function buildLevelButtons(){
+    let html = '';
+    for (let i = 1; i <= MAX_LEVELS; i++){
+      html += `<button class="color-level-btn${i === AppState.colorLevels ? ' active' : ''}" data-level="${i}">${i}</button>`;
+    }
+    levelButtonsWrap.innerHTML = html;
+    levelButtonsWrap.querySelectorAll('.color-level-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        AppState.colorLevels = parseInt(b.dataset.level, 10);
+        buildLevelButtons();
+        Renderer.render();
+      });
+    });
+  }
+
+  function buildRootColor(){
+    const hex = AppState.rootColor || DEFAULT_ROOT_COLOR;
+    rootColorInput.value = hex;
+    rootColorHex.value = hex;
+  }
+
+  function buildPaletteList(){
+    const palette = AppState.customPalette && AppState.customPalette.length ? AppState.customPalette : [...DEFAULT_PALETTE_HEX];
+    paletteList.innerHTML = palette.map((hex, i) => `
+      <div class="color-palette-row" data-idx="${i}">
+        <span class="color-palette-idx">${i + 1}</span>
+        <input type="color" class="color-palette-swatch" data-idx="${i}" value="${hex}" />
+        <input type="text" class="color-palette-hex" data-idx="${i}" value="${hex}" maxlength="7" />
+        <div class="color-palette-actions">
+          <button class="color-palette-action-btn" data-action="edit" data-idx="${i}" title="Focar no seletor de cor">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="color-palette-action-btn danger" data-action="delete" data-idx="${i}" title="Remover cor">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function commitPaletteColor(idx, hex){
+    const normalized = normalizeHex(hex);
+    if (!normalized) return false;
+    if (!AppState.customPalette || !AppState.customPalette.length) AppState.customPalette = [...DEFAULT_PALETTE_HEX];
+    AppState.customPalette[idx] = normalized;
+    Renderer.render();
+    return true;
+  }
+
+  function deletePaletteColor(idx){
+    if (!AppState.customPalette || AppState.customPalette.length <= 1) return; // mantém ao menos 1 cor
+    AppState.customPalette.splice(idx, 1);
+    buildPaletteList();
+    Renderer.render();
+  }
+
+  function addPaletteColor(){
+    if (!AppState.customPalette) AppState.customPalette = [...DEFAULT_PALETTE_HEX];
+    if (AppState.customPalette.length >= 20) return; // limite de 20 cores
+    // próxima cor sugerida: gira o matiz a partir da última cor da lista
+    const last = AppState.customPalette[AppState.customPalette.length - 1] || '#888888';
+    AppState.customPalette.push(last);
+    buildPaletteList();
+    Renderer.render();
+  }
+
+  function bindPaletteEvents(){
+    paletteList.addEventListener('input', (ev) => {
+      const idx = parseInt(ev.target.dataset.idx, 10);
+      if (isNaN(idx)) return;
+      if (ev.target.classList.contains('color-palette-swatch')) {
+        commitPaletteColor(idx, ev.target.value);
+        const hexField = paletteList.querySelector(`.color-palette-hex[data-idx="${idx}"]`);
+        if (hexField) hexField.value = ev.target.value;
+      } else if (ev.target.classList.contains('color-palette-hex')) {
+        const normalized = normalizeHex(ev.target.value);
+        if (normalized) {
+          commitPaletteColor(idx, normalized);
+          const swatch = paletteList.querySelector(`.color-palette-swatch[data-idx="${idx}"]`);
+          if (swatch) swatch.value = normalized;
+        }
+      }
+    });
+
+    paletteList.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action]');
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (btn.dataset.action === 'edit') {
+        const swatch = paletteList.querySelector(`.color-palette-swatch[data-idx="${idx}"]`);
+        if (swatch) swatch.click(); // abre o seletor de cor nativo do navegador
+      } else if (btn.dataset.action === 'delete') {
+        deletePaletteColor(idx);
+      }
+    });
+  }
+
+  function bindRootColorEvents(){
+    rootColorInput.addEventListener('input', () => {
+      AppState.rootColor = rootColorInput.value;
+      rootColorHex.value = rootColorInput.value;
+      Renderer.render();
+    });
+    rootColorHex.addEventListener('input', () => {
+      const normalized = normalizeHex(rootColorHex.value);
+      if (normalized) {
+        AppState.rootColor = normalized;
+        rootColorInput.value = normalized;
+        Renderer.render();
+      }
+    });
+    rootColorReset.addEventListener('click', () => {
+      AppState.rootColor = DEFAULT_ROOT_COLOR;
+      buildRootColor();
+      Renderer.render();
+    });
+  }
+
+  function open(){
+    buildLevelButtons();
+    buildRootColor();
+    buildPaletteList();
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function close(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+  function toggle(){
+    if (drawer.classList.contains('open')) close();
+    else open();
+  }
+
+  document.getElementById('color-close').addEventListener('click', close);
+  overlay.addEventListener('click', close);
+  addBtn.addEventListener('click', addPaletteColor);
+  bindPaletteEvents();
+  bindRootColorEvents();
+
+  return { toggle, open, close };
+})();
+
+/* =========================================================
+   IMPORTAR / EXPORTAR (CSV, Excel via SheetJS, HTML standalone)
+   ========================================================= */
+const ImportExport = (() => {
+
+  let xlsxLoaded = false;
+  function ensureXLSX(){
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) { xlsxLoaded = true; return resolve(); }
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = () => { xlsxLoaded = true; resolve(); };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  /* ---------- EXPORTAR CSV/XLSX ---------- */
+  function buildSheetMatrix(){
+    const rows = SheetPanel.flattenRows();
+    const maxDepth = TreeModel.maxDepth();
+    const colCount = maxDepth + 1;
+    const header = [];
+    for (let i = 0; i < colCount; i++) header.push(getColumnName(i + 1));
+    header.push('Texto', 'Origem');
+
+    const matrix = [header];
+    rows.forEach(row => {
+      const line = new Array(colCount).fill('');
+      line[row.depth] = row.name;
+      line.push(row.text || '');
+      const parentName = row.parentId ? (TreeModel.findNode(row.parentId)?.name || '') : '';
+      line.push(parentName);
+      matrix.push(line);
+    });
+    return matrix;
+  }
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function escapeHtmlBuild(str){
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function exportCSV(){
+    const matrix = buildSheetMatrix();
+    const csv = matrix.map(row =>
+      row.map(cell => {
+        const s = String(cell ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')
+    ).join('\r\n');
+    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), 'mindtree.csv');
+  }
+
+  async function exportXLSX(){
+    await ensureXLSX();
+    const matrix = buildSheetMatrix();
+    const ws = XLSX.utils.aoa_to_sheet(matrix);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'MindTree');
+    XLSX.writeFile(wb, 'mindtree.xlsx');
+  }
+
+  /* ---------- EXPORTAR EM "CAMPOS COMBINADOS" (tabela tradicional) ----------
+     Formato inverso da importação de campos combinados: gera uma linha por
+     nó FOLHA (sem filhos), repetindo o valor de cada ancestral em sua própria
+     coluna — exatamente como uma planilha de banco de dados tradicional,
+     sem células vazias por repetição de categoria/subcategoria. */
+  function buildCombinedFieldsMatrix(){
+    const root = TreeModel.getRoot();
+    const maxDepth = TreeModel.maxDepth();
+    const colCount = maxDepth + 1; // inclui a raiz como 1ª coluna
+
+    const header = [];
+    for (let i = 0; i < colCount; i++) header.push(getColumnName(i + 1));
+    header.push('Texto');
+
+    const matrix = [header];
+
+    function walk(node, ancestors){
+      const path = [...ancestors, node.name];
+      if (!node.children || node.children.length === 0) {
+        // nó folha: gera uma linha, preenchendo todas as colunas até aqui
+        // e repetindo o último valor nas colunas restantes (caso a folha
+        // esteja em um nível mais raso que maxDepth)
+        const line = new Array(colCount).fill('');
+        for (let i = 0; i < colCount; i++){
+          line[i] = i < path.length ? path[i] : path[path.length - 1];
+        }
+        line.push(node.text || '');
+        matrix.push(line);
+      } else {
+        node.children.forEach(c => walk(c, path));
+      }
+    }
+    walk(root, []);
+
+    return matrix;
+  }
+
+  function exportCombinedCSV(){
+    const matrix = buildCombinedFieldsMatrix();
+    const csv = matrix.map(row =>
+      row.map(cell => {
+        const s = String(cell ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')
+    ).join('\r\n');
+    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), 'mindtree-campos-combinados.csv');
+  }
+
+  async function exportCombinedXLSX(){
+    await ensureXLSX();
+    const matrix = buildCombinedFieldsMatrix();
+    const ws = XLSX.utils.aoa_to_sheet(matrix);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'MindTree');
+    XLSX.writeFile(wb, 'mindtree-campos-combinados.xlsx');
+  }
+
+  /* ---------- EXPORTAR HTML (apresentação, somente visualização) ---------- */
+  function exportHTML(){
+    const dataJson = JSON.stringify(TreeModel.getRoot());
+    const colorLevels = AppState.colorLevels;
+    const projectName = ProjectManager.getCurrentProjectName() || TreeModel.getRoot().name || 'Sem título';
+    const columnNamesJson = JSON.stringify(AppState.columnNames || []);
+    const customPaletteJson = JSON.stringify((AppState.customPalette && AppState.customPalette.length) ? AppState.customPalette : DEFAULT_PALETTE_HEX);
+    const rootColor = AppState.rootColor || DEFAULT_ROOT_COLOR;
+    const html = buildStandaloneHTML(dataJson, colorLevels, AppState.containerShape, AppState.containerHeight, AppState.lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor);
+    downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), 'mindtree-apresentacao.html');
+  }
+
+  function buildStandaloneHTML(dataJson, colorLevels, containerShape, containerHeight, lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor){
+    // arquivo enxuto, somente leitura, com os mesmos estilos de nó/cor
+    // contém um marcador <!--MINDTREE_DATA:...--> para permitir reimportação
+    return `<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MindTree — Apresentação</title>
+<style>
+  :root{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#5b8def;--radius:10px;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;}
+  @media (prefers-color-scheme: light){:root{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#3b6fd9;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;}}
+  html[data-theme="dark"]{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#5b8def;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;}
+  html[data-theme="light"]{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#3b6fd9;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;}
+  #canvas-wrap{position:fixed;inset:0;overflow:hidden;background:radial-gradient(circle,var(--dot-color) 1px,transparent 1px);background-size:24px 24px;background-color:var(--bg-canvas);}
+  svg#tree-svg{display:block;width:100%;height:100%;}
+  .tree-node-circle{cursor:pointer;}
+  .circle-glyph{stroke:var(--panel);stroke-width:1.6;stroke-linecap:round;pointer-events:none;}
+  .tree-capsule{cursor:pointer;}
+  .capsule-label{font-size:13px;font-weight:600;pointer-events:none;dominant-baseline:central;text-anchor:middle;}
+  .link-path{fill:none;stroke-width:2;}
+  .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .mt-view-panel{width:100%;max-width:460px;max-height:80vh;background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  .mt-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;gap:10px;}
+  .mt-modal-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
+  .mt-modal-head-left span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mt-back{background:var(--panel-2);border:1px solid var(--border-light);color:var(--text-dim);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;}
+  .mt-back:hover{background:var(--panel);color:var(--text);}
+  .mt-back svg{width:15px;height:15px;}
+  .mt-x{background:none;border:none;color:var(--text-dim);font-size:22px;line-height:1;cursor:pointer;}
+  .mt-modal-body{padding:16px;overflow-y:auto;}
+  .mt-view-text{font-size:14px;line-height:1.6;color:var(--text-dim);margin:0 0 14px;}
+  .mt-view-text.mt-faint{color:var(--text-faint);font-style:italic;}
+  .mt-children-title{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
+  .mt-children-list{display:flex;flex-direction:column;gap:6px;}
+  .mt-child-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;cursor:pointer;max-width:100%;}
+  .mt-child-row:hover{border-color:var(--accent);}
+  .mt-child-main{flex:1 1 0%;min-width:0;overflow:hidden;}
+  .mt-child-name{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mt-child-text{font-size:12px;color:var(--text-faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
+  .mt-empty-children{font-size:13px;color:var(--text-faint);font-style:italic;}
+  #brand{position:fixed;top:14px;left:16px;font-size:13px;font-weight:600;color:var(--text-dim);z-index:50;}
+  svg#tree-svg{cursor:grab;}
+  svg#tree-svg.panning{cursor:grabbing;}
+  #zoom-controls{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border-light);border-radius:8px;box-shadow:var(--shadow);overflow:hidden;z-index:60;}
+  .zoom-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--text-dim);cursor:pointer;}
+  .zoom-btn:hover{background:var(--panel-2);color:var(--text);}
+  .zoom-btn svg{width:17px;height:17px;}
+  .zoom-divider{height:1px;background:var(--border);}
+  #zoom-pct{font-size:10.5px;color:var(--text-faint);text-align:center;padding:3px 0;border-top:1px solid var(--border);user-select:none;}
+  #level-controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;background:var(--panel);border:1px solid var(--border-light);border-radius:8px;box-shadow:var(--shadow);overflow:hidden;z-index:60;}
+  .level-btn{width:42px;height:38px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-right:1px solid var(--border);color:var(--text-dim);cursor:pointer;}
+  .level-btn:last-child{border-right:none;}
+  .level-btn:hover{background:var(--panel-2);color:var(--text);}
+  .level-glyph{font-size:15px;line-height:1;user-select:none;font-variant-emoji:text;font-family:"Segoe UI Symbol","Noto Sans Symbols","Apple Symbols",system-ui,sans-serif;-webkit-font-feature-settings:"liga" off;font-feature-settings:"liga" off;}
+  #theme-toggle{position:fixed;top:14px;right:16px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border-light);border-radius:8px;color:var(--text-dim);cursor:pointer;z-index:60;box-shadow:var(--shadow);}
+  #theme-toggle:hover{background:var(--panel-2);color:var(--text);}
+  #theme-toggle svg{width:17px;height:17px;}
+  #project-name-bar{position:fixed;top:18px;left:50%;transform:translateX(-50%);font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--text);z-index:55;user-select:none;max-width:80vw;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+</style></head>
+<body>
+<div id="brand">MindTree</div>
+<div id="project-name-bar">${escapeHtmlBuild(projectName || 'Sem título')}</div>
+<button id="theme-toggle" title="Alternar tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-toggle-icon"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></button>
+<div id="canvas-wrap"><svg id="tree-svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+<div id="zoom-controls">
+  <button class="zoom-btn" id="zoom-in" title="Aumentar zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+  <div class="zoom-divider"></div>
+  <button class="zoom-btn" id="zoom-out" title="Diminuir zoom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+  <div class="zoom-divider"></div>
+  <button class="zoom-btn" id="zoom-fit" title="Ajustar à tela"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg></button>
+  <div id="zoom-pct">100%</div>
+</div>
+<div id="level-controls">
+  <button class="level-btn" id="level-collapse-all" title="Fechar todos os níveis"><span class="level-glyph">⏮</span></button>
+  <button class="level-btn" id="level-collapse-one" title="Fechar o último nível aberto"><span class="level-glyph">⏪</span></button>
+  <button class="level-btn" id="level-expand-level" title="Explorar próximo nó"><span class="level-glyph">▶</span></button>
+  <button class="level-btn" id="level-expand-one" title="Abrir o próximo nível (toda a árvore)"><span class="level-glyph">⏩</span></button>
+  <button class="level-btn" id="level-expand-all" title="Abrir todos os níveis"><span class="level-glyph">⏭</span></button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"><\/script>
+<script type="application/json" id="mindtree-data">${dataJson}<\/script>
+<script type="application/json" id="mindtree-style">${JSON.stringify({colorLevels, containerShape, containerHeight, lineStyle, columnNames: JSON.parse(columnNamesJson), customPalette: JSON.parse(customPaletteJson), rootColor})}<\/script>
+<script>
+const TREE_DATA = JSON.parse(document.getElementById('mindtree-data').textContent);
+const COLOR_LEVELS = ${colorLevels};
+const CONTAINER_SHAPE = '${containerShape}';
+const CONTAINER_HEIGHT = '${containerHeight}';
+const LINE_STYLE = '${lineStyle}';
+const CUSTOM_PALETTE = ${customPaletteJson};
+const ROOT_COLOR = '${rootColor}';
+
+function theme(){
+  const attr = document.documentElement.getAttribute('data-theme');
+  if (attr === 'dark' || attr === 'light') return attr;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function bestTextColor(hex){
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substr(0, 2), 16) / 255;
+  const g = parseInt(h.substr(2, 2), 16) / 255;
+  const b = parseInt(h.substr(4, 2), 16) / 255;
+  const lin = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const contrastWithWhite = (1.05) / (luminance + 0.05);
+  return contrastWithWhite >= 3.2 ? '#ffffff' : '#1c1e22';
+}
+
+function adjustForLightTheme(hex){
+  const h = hex.replace('#', '');
+  let r = parseInt(h.substr(0, 2), 16);
+  let g = parseInt(h.substr(2, 2), 16);
+  let b = parseInt(h.substr(4, 2), 16);
+  const mix = (c) => Math.round(c + (255 - c) * 0.06);
+  r = mix(r); g = mix(g); b = mix(b);
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+}
+
+function colorPairFromHex(hex){
+  const dark = hex;
+  const light = adjustForLightTheme(hex);
+  return {
+    dark: { fill: dark, text: bestTextColor(dark) },
+    light: { fill: light, text: bestTextColor(light) }
+  };
+}
+
+function rootColorPair(){
+  const t = theme();
+  return colorPairFromHex(ROOT_COLOR || '#5a5b64')[t];
+}
+
+function colorByIndex(idx){
+  const t = theme();
+  if (idx === null || idx === undefined) return rootColorPair();
+  const palette = (CUSTOM_PALETTE && CUSTOM_PALETTE.length) ? CUSTOM_PALETTE : ['#888888'];
+  const hex = palette[idx % palette.length] || palette[0];
+  return colorPairFromHex(hex)[t];
+}
+
+const CIRCLE_R=9, CAPSULE_H_MAX=36, CAPSULE_H_MIN=22, CAPSULE_GAP=14, MIN_CAPSULE_W=70, PAD_X=14, ROW_H=46, LEVEL_GAP=64, PADDING=90, CHAR_W=7.6;
+function getCapsuleH(){ return CONTAINER_HEIGHT === 'min' ? CAPSULE_H_MIN : CAPSULE_H_MAX; }
+function getContainerRadius(h){
+  if (CONTAINER_SHAPE === 'rect') return 0;
+  if (CONTAINER_SHAPE === 'rounded') return 6;
+  return h / 2;
+}
+const ZOOM_MIN=0.15, ZOOM_MAX=2.5;
+const svg = d3.select('#tree-svg');
+const wrap = document.getElementById('canvas-wrap');
+const zoomLayer = svg.append('g').attr('class','zoom-layer');
+let currentTransform = d3.zoomIdentity;
+
+function updateZoomPct(){
+  const el = document.getElementById('zoom-pct');
+  if (el) el.textContent = Math.round(currentTransform.k * 100) + '%';
+}
+
+const zoomBehavior = d3.zoom()
+  .scaleExtent([ZOOM_MIN, ZOOM_MAX])
+  .filter((event) => {
+    if (event.type === 'wheel') return true;
+    if (event.type === 'mousedown') return event.button === 0 || event.button === 1;
+    return !event.button;
+  })
+  .on('zoom', (event) => {
+    currentTransform = event.transform;
+    zoomLayer.attr('transform', currentTransform);
+    updateZoomPct();
+  })
+  .on('start', (event) => {
+    if (event.sourceEvent && event.sourceEvent.button === 1) svg.classed('panning', true);
+  })
+  .on('end', () => svg.classed('panning', false));
+
+svg.call(zoomBehavior).on('dblclick.zoom', null);
+svg.node().addEventListener('mousedown', ev => { if (ev.button === 1) ev.preventDefault(); });
+svg.node().addEventListener('auxclick', ev => { if (ev.button === 1) ev.preventDefault(); });
+
+function zoomBy(factor){ svg.transition().duration(200).call(zoomBehavior.scaleBy, factor); }
+function zoomTo(transform, duration){ svg.transition().duration(duration ?? 400).call(zoomBehavior.transform, transform); }
+
+function truncate(s,m){ if(!s) return ''; return s.length>m? s.slice(0,m-1)+'…': s; }
+function escapeHtml(s){ if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function findNode(id, node){ node = node || TREE_DATA; if(node.id===id) return node; for(const c of node.children){ const f=findNode(id,c); if(f) return f; } return null; }
+function capsuleWidth(node){
+  const nameLen = (node.name||'Sem título').length;
+  return Math.max(MIN_CAPSULE_W, Math.round(nameLen*CHAR_W)+PAD_X*2);
+}
+function buildHierarchy(){
+  const root = d3.hierarchy(TREE_DATA, d => d.collapsed ? null : d.children);
+  const palette = (CUSTOM_PALETTE && CUSTOM_PALETTE.length) ? CUSTOM_PALETTE : ['#888888'];
+  let paletteCounter = 0;
+  root.each(d => {
+    if (d.depth === 0) {
+      d._colorIdx = null;
+    } else if (d.depth <= COLOR_LEVELS) {
+      let idx = paletteCounter % palette.length;
+      const parentIdx = d.parent ? d.parent._colorIdx : null;
+      if (parentIdx !== null && parentIdx !== undefined && idx === parentIdx && palette.length > 1) {
+        idx = (idx + 1) % palette.length; // nunca repete a cor do pai direto
+      }
+      d._colorIdx = idx;
+      paletteCounter++;
+    } else {
+      d._colorIdx = d.parent._colorIdx;
+    }
+    d._w = capsuleWidth(d.data);
+  });
+  return root;
+}
+let lastLayoutRoot = null;
+function computeLayout(){
+  const root = buildHierarchy();
+  const layout = d3.tree().nodeSize([ROW_H, 0]);
+  layout(root);
+  const widthByDepth = {};
+  root.each(d => { widthByDepth[d.depth] = Math.max(widthByDepth[d.depth]||0, d._w||MIN_CAPSULE_W); });
+  const xOffsetByDepth = {}; let acc = 0;
+  const maxDepth = Math.max(...root.descendants().map(d=>d.depth));
+  for (let depth=0; depth<=maxDepth; depth++){ xOffsetByDepth[depth]=acc; acc += CIRCLE_R*2+CAPSULE_GAP+(widthByDepth[depth]||MIN_CAPSULE_W)+LEVEL_GAP; }
+  root.each(d => { d.y = xOffsetByDepth[d.depth]; });
+  let minX=Infinity,maxX=-Infinity;
+  root.each(d=>{ if(d.x<minX)minX=d.x; if(d.x>maxX)maxX=d.x; });
+  const offsetX = PADDING - minX;
+  root.each(d=>{ d.x+=offsetX; d.y+=PADDING; });
+  return root;
+}
+function linkPathGen(d){
+  const sourceW = d.source._w || MIN_CAPSULE_W;
+  const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+  const tx = d.target.y, ty = d.target.x;
+  if (LINE_STYLE === 'straight') {
+    const mx = (sx + tx) / 2;
+    return \`M\${sx},\${sy} H\${mx} V\${ty} H\${tx}\`;
+  }
+  if (LINE_STYLE === 'rounded') {
+    const mx = (sx + tx) / 2;
+    const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(mx - sx) / 2, Math.abs(tx - mx) / 2);
+    if (r < 1 || sy === ty) return \`M\${sx},\${sy} H\${tx}\`;
+    const goingDown = ty > sy;
+    const sweep1 = goingDown ? 1 : 0;
+    const sweep2 = goingDown ? 0 : 1;
+    return \`M\${sx},\${sy} H\${mx - r} A\${r},\${r} 0 0 \${sweep1} \${mx},\${sy + (goingDown ? r : -r)} V\${ty - (goingDown ? r : -r)} A\${r},\${r} 0 0 \${sweep2} \${mx + r},\${ty} H\${tx}\`;
+  }
+  if (LINE_STYLE === 'orthogonal') {
+    const mx = (sx + tx) / 2;
+    const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(tx - mx) / 2);
+    if (r < 1 || sy === ty) return \`M\${sx},\${sy} H\${tx}\`;
+    const goingDown = ty > sy;
+    const sweep2 = goingDown ? 0 : 1;
+    return \`M\${sx},\${sy} H\${mx} V\${ty - (goingDown ? r : -r)} A\${r},\${r} 0 0 \${sweep2} \${mx + r},\${ty} H\${tx}\`;
+  }
+  const mx = (sx + tx) / 2;
+  return \`M\${sx},\${sy} C\${mx},\${sy} \${mx},\${ty} \${tx},\${ty}\`;
+}
+const ANIM_MS = 380;
+const ANIM_EASE = d3.easeCubicInOut;
+let previousLayoutRoot = null;
+
+function parentAnchorExported(d, refRoot){
+  function findInData(node, id){
+    if (node.id === id) return node;
+    for (const c of (node.children||[])) { const f = findInData(c, id); if (f) return f; }
+    return null;
+  }
+  let parentData = null;
+  (function findParent(node, targetId, parent){
+    if (node.id === targetId) { parentData = parent; return true; }
+    for (const c of (node.children||[])) { if (findParent(c, targetId, node)) return true; }
+    return false;
+  })(TREE_DATA, d.data.id, null);
+  if (!parentData) return { x: d.x, y: d.y };
+  if (refRoot) {
+    const found = refRoot.descendants().find(n => n.data.id === parentData.id);
+    if (found) return { x: found.x, y: found.y, w: found._w || MIN_CAPSULE_W };
+  }
+  if (d.parent) return { x: d.parent.x, y: d.parent.y, w: d.parent._w || MIN_CAPSULE_W };
+  return { x: d.x, y: d.y };
+}
+
+function render(){
+  const root = computeLayout();
+  previousLayoutRoot = lastLayoutRoot;
+  lastLayoutRoot = root;
+
+  let lg = zoomLayer.select('g.links'); if (lg.empty()) lg = zoomLayer.append('g').attr('class','links');
+  const linkSel = lg.selectAll('path').data(root.links(), d => d.target.data.id);
+  linkSel.exit()
+    .transition().duration(ANIM_MS).ease(ANIM_EASE)
+    .attr('d', d => {
+      const sourceW = d.source._w || MIN_CAPSULE_W;
+      const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+      return \`M\${sx},\${sy} C\${sx},\${sy} \${sx},\${sy} \${sx},\${sy}\`;
+    })
+    .remove();
+  const linkEnter = linkSel.enter().append('path').attr('class','link-path')
+    .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
+    .attr('d', d => {
+      const sourceW = d.source._w || MIN_CAPSULE_W;
+      const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+      return \`M\${sx},\${sy} C\${sx},\${sy} \${sx},\${sy} \${sx},\${sy}\`;
+    });
+  linkEnter.merge(linkSel)
+    .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
+    .transition().duration(ANIM_MS).ease(ANIM_EASE)
+    .attr('d', linkPathGen);
+
+  let ng = zoomLayer.select('g.nodes'); if (ng.empty()) ng = zoomLayer.append('g').attr('class','nodes');
+  const sel = ng.selectAll('g.nw').data(root.descendants(), d=>d.data.id);
+
+  sel.exit()
+    .transition().duration(ANIM_MS).ease(ANIM_EASE)
+    .attr('transform', d => { const a = parentAnchorExported(d, previousLayoutRoot); return \`translate(\${a.y},\${a.x})\`; })
+    .style('opacity', 0)
+    .remove();
+
+  const entered = sel.enter().append('g').attr('class','nw')
+    .attr('transform', d => { const a = parentAnchorExported(d, lastLayoutRoot); return \`translate(\${a.y},\${a.x})\`; })
+    .style('opacity', 0);
+
+  const merged = entered.merge(sel);
+
+  entered.transition().duration(ANIM_MS).ease(ANIM_EASE)
+    .style('opacity', 1)
+    .attr('transform', d=>\`translate(\${d.y},\${d.x})\`);
+
+  sel.transition().duration(ANIM_MS).ease(ANIM_EASE)
+    .attr('transform', d=>\`translate(\${d.y},\${d.x})\`);
+
+  merged.each(function(d){
+    const g = d3.select(this); g.selectAll('*').remove();
+    const color = colorByIndex(d._colorIdx);
+    const w = d._w || MIN_CAPSULE_W;
+    const hasChildren = d.data.children && d.data.children.length > 0;
+    const isOpen = hasChildren && !d.data.collapsed;
+    const capH = getCapsuleH();
+    const capRadius = getContainerRadius(capH);
+
+    const capGrp = g.append('g').attr('class','tree-capsule')
+      .attr('transform', \`translate(0, \${-capH/2})\`)
+      .on('click', () => openView(d.data.id));
+    capGrp.append('rect').attr('width',w).attr('height',capH).attr('rx',capRadius).attr('fill',color.fill);
+    capGrp.append('text').attr('class','capsule-label').attr('x',w/2).attr('y',capH/2)
+      .attr('fill',color.text).text(truncate(d.data.name||'Sem título',50));
+
+    const circleX = w + CAPSULE_GAP + CIRCLE_R;
+    g.append('line').attr('x1',w).attr('y1',0).attr('x2',circleX-CIRCLE_R).attr('y2',0)
+      .attr('stroke', color.fill).attr('stroke-width',2);
+
+    const circleGrp = g.append('g').attr('class','tree-node-circle')
+      .attr('transform', \`translate(\${circleX}, 0)\`)
+      .on('click', () => toggleNode(d.data.id));
+    circleGrp.append('circle').attr('r',CIRCLE_R)
+      .attr('fill', hasChildren ? color.fill : 'var(--panel)')
+      .attr('stroke', color.fill).attr('stroke-width',2);
+    if (hasChildren) {
+      circleGrp.append('line').attr('class','circle-glyph').attr('x1',-3.5).attr('y1',0).attr('x2',3.5).attr('y2',0);
+      if (!isOpen) circleGrp.append('line').attr('class','circle-glyph').attr('x1',0).attr('y1',-3.5).attr('x2',0).attr('y2',3.5);
+    }
+  });
+}
+function collapseDescendants(node){
+  (node.children || []).forEach(c => { c.collapsed = true; collapseDescendants(c); });
+}
+function toggleNode(nodeId){
+  const node = findNode(nodeId);
+  if (!node || !node.children || !node.children.length) return;
+  if (!node.collapsed) {
+    node.collapsed = true;
+    collapseDescendants(node);
+  } else {
+    node.collapsed = false;
+  }
+  render();
+}
+function getMaxOpenDepth(node, depth){
+  node = node || TREE_DATA; depth = depth || 0;
+  if (node.collapsed || !node.children || !node.children.length) return depth;
+  return Math.max(...node.children.map(c => getMaxOpenDepth(c, depth + 1)));
+}
+function findParentInTree(targetId, node, parent){
+  node = node || TREE_DATA;
+  if (node.id === targetId) return parent;
+  for (const c of (node.children || [])) {
+    const found = findParentInTree(targetId, c, node);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+function flattenPreOrderExported(node, acc){
+  node = node || TREE_DATA; acc = acc || [];
+  (node.children || []).forEach(c => {
+    acc.push(c);
+    flattenPreOrderExported(c, acc);
+  });
+  return acc;
+}
+
+function expandNextNode(){
+  // navegação sequencial em profundidade (DFS): a cada clique, SEMPRE varre
+  // a árvore inteira DO INÍCIO e abre o PRIMEIRO nó que ainda está FECHADO
+  // e tem filhos pra revelar. Não depende de ponteiro de última posição —
+  // sempre reflete o estado real, mesmo se a árvore mudou por fora.
+  const allNodes = flattenPreOrderExported();
+  if (!allNodes.length) return;
+
+  const target = allNodes.find(n => n.collapsed && n.children && n.children.length);
+  if (!target) {
+    // não há mais nenhum nó fechado com filhos — reinicia o ciclo
+    collapseAllLevels();
+    const restartTarget = allNodes.find(n => n.children && n.children.length);
+    if (restartTarget) restartTarget.collapsed = false;
+    render();
+    return;
+  }
+
+  let parent = findParentInTree(target.id);
+  while (parent) {
+    if (parent.collapsed) parent.collapsed = false;
+    parent = findParentInTree(parent.id);
+  }
+  target.collapsed = false;
+  render();
+}
+function expandNextLevel(){
+  // expande TODA A ÁRVORE por camada uniforme (empurra a fronteira de
+  // profundidade aberta em +1, alcançando ramos atrasados primeiro).
+  const maxDepth = getMaxOpenDepth();
+  function hasLaggingClosed(node, depth){
+    if (node.collapsed) return depth < maxDepth && node.children && node.children.length > 0;
+    return (node.children || []).some(c => hasLaggingClosed(c, depth + 1));
+  }
+  const lagging = hasLaggingClosed(TREE_DATA, 0);
+  function walk(node, depth){
+    if (node.collapsed) {
+      const targetDepth = lagging ? maxDepth - 1 : maxDepth;
+      if (depth === targetDepth && node.children && node.children.length) node.collapsed = false;
+      return;
+    }
+    (node.children || []).forEach(c => walk(c, depth + 1));
+  }
+  walk(TREE_DATA, 0);
+  render();
+}
+function collapseLastLevel(){
+  const maxDepth = getMaxOpenDepth();
+  if (maxDepth === 0) return;
+  function walk(node, depth){
+    if (depth === maxDepth - 1 && node.children && node.children.length && !node.collapsed) {
+      node.collapsed = true; collapseDescendants(node); return;
+    }
+    (node.children || []).forEach(c => { if (!node.collapsed) walk(c, depth + 1); });
+  }
+  walk(TREE_DATA, 0);
+  render();
+}
+function expandAllLevels(){
+  function walk(node){ if (node.children && node.children.length) node.collapsed = false; (node.children || []).forEach(walk); }
+  walk(TREE_DATA);
+  render();
+}
+function collapseAllLevels(){
+  (TREE_DATA.children || []).forEach(c => { c.collapsed = true; collapseDescendants(c); });
+  render();
+}
+function openView(nodeId, history){
+  history = history || [];
+  const node = findNode(nodeId); if(!node) return;
+  let panel = document.getElementById('vp'); if (panel) panel.remove();
+  panel = document.createElement('div'); panel.id='vp'; panel.className='mt-overlay';
+  const hasChildren = node.children && node.children.length > 0;
+  let childrenSectionHtml = '';
+  if (hasChildren) {
+    const childrenHtml = node.children.map(c => \`
+      <div class="mt-child-row" data-id="\${c.id}">
+        <div class="mt-child-main"><div class="mt-child-name">\${escapeHtml(c.name||'Sem título')}</div>\${c.text?'<div class="mt-child-text">'+escapeHtml(truncate(c.text,80))+'</div>':''}</div>
+      </div>\`).join('');
+    childrenSectionHtml = \`<div class="mt-children-title">Destinos (\${node.children.length})</div><div class="mt-children-list">\${childrenHtml}</div>\`;
+  }
+  const backBtnHtml = history.length
+    ? '<button class="mt-back" id="vpback" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>'
+    : '';
+  panel.innerHTML = \`<div class="mt-view-panel"><div class="mt-modal-head"><div class="mt-modal-head-left">\${backBtnHtml}<span>\${escapeHtml(node.name||'Sem título')}</span></div><button class="mt-x" id="vpx">&times;</button></div><div class="mt-modal-body">\${node.text?'<p class="mt-view-text">'+escapeHtml(node.text)+'</p>':'<p class="mt-view-text mt-faint">Sem descrição.</p>'}\${childrenSectionHtml}</div></div>\`;
+  document.body.appendChild(panel);
+  panel.addEventListener('click', ev => {
+    const backBtn = ev.target.closest('#vpback');
+    if (backBtn) {
+      const prevId = history[history.length - 1];
+      const newHistory = history.slice(0, -1);
+      panel.remove();
+      openView(prevId, newHistory);
+      return;
+    }
+    const row = ev.target.closest('.mt-child-row');
+    if (row) { panel.remove(); openView(row.dataset.id, [...history, nodeId]); return; }
+    if (ev.target===panel || ev.target.id==='vpx') panel.remove();
+  });
+}
+function getNodeScreenPos(d){
+  const w = d._w || MIN_CAPSULE_W;
+  const totalW = CIRCLE_R*2 + CAPSULE_GAP + w;
+  const capH = getCapsuleH();
+  return { x: d.y - CIRCLE_R, y: d.x - capH/2, w: totalW, h: capH };
+}
+function fitToScreen(duration){
+  if (!lastLayoutRoot) return;
+  const nodes = lastLayoutRoot.descendants();
+  if (!nodes.length) return;
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  nodes.forEach(d => {
+    const pos = getNodeScreenPos(d);
+    minX = Math.min(minX, pos.x); maxX = Math.max(maxX, pos.x+pos.w);
+    minY = Math.min(minY, pos.y); maxY = Math.max(maxY, pos.y+pos.h);
+  });
+  const treeW = maxX-minX, treeH = maxY-minY;
+  const viewW = wrap.clientWidth, viewH = wrap.clientHeight;
+  const MARGIN = 64;
+  const k = Math.max(Math.min((viewW-MARGIN*2)/treeW, (viewH-MARGIN*2)/treeH, ZOOM_MAX), ZOOM_MIN);
+  const centerX = (minX+maxX)/2, centerY = (minY+maxY)/2;
+  const tx = viewW/2 - centerX*k, ty = viewH/2 - centerY*k;
+  zoomTo(d3.zoomIdentity.translate(tx,ty).scale(k), duration ?? 450);
+}
+document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.3));
+document.getElementById('zoom-out').addEventListener('click', () => zoomBy(1/1.3));
+document.getElementById('zoom-fit').addEventListener('click', () => fitToScreen());
+document.getElementById('level-expand-level').addEventListener('click', expandNextNode);
+document.getElementById('level-expand-one').addEventListener('click', expandNextLevel);
+document.getElementById('level-collapse-one').addEventListener('click', collapseLastLevel);
+document.getElementById('level-expand-all').addEventListener('click', expandAllLevels);
+document.getElementById('level-collapse-all').addEventListener('click', collapseAllLevels);
+
+const THEME_STORAGE_KEY = 'mindtree-export-theme';
+const ICON_SUN = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>';
+const ICON_MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>';
+function getStoredTheme(){ try { return localStorage.getItem(THEME_STORAGE_KEY); } catch(e){ return null; } }
+function setStoredTheme(v){ try { localStorage.setItem(THEME_STORAGE_KEY, v); } catch(e){} }
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  const icon = document.getElementById('theme-toggle-icon');
+  if (icon) icon.innerHTML = t === 'dark' ? ICON_MOON : ICON_SUN;
+  render();
+}
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') || theme();
+  const next = current === 'dark' ? 'light' : 'dark';
+  setStoredTheme(next);
+  applyTheme(next);
+});
+const initialTheme = getStoredTheme() || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+applyTheme(initialTheme);
+
+requestAnimationFrame(() => fitToScreen(0));
+window.addEventListener('resize', render);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev) => {
+  if (!getStoredTheme()) applyTheme(ev.matches ? 'dark' : 'light');
+});
+<\/script>
+</body></html>`;
+  }
+
+  /* ---------- IMPORTAR ---------- */
+  function rowsToTree(rows){
+    // rows: array de { cells: [nivel1, nivel2, ...], text, origem }
+    // reconstrói hierarquia baseada na posição da coluna preenchida (nível)
+    // e na ordem sequencial das linhas usando uma pilha de "último nó em cada nível"
+    const root = TreeModel.createNode('Importado', '');
+    const lastAtLevel = {};
+    rows.forEach(r => {
+      const level = r.cells.findIndex(c => c && String(c).trim() !== '');
+      if (level === -1) return;
+      const name = String(r.cells[level]).trim();
+      const node = TreeModel.createNode(name, r.text || '');
+      if (level === 0) {
+        root.children.push(node);
+      } else {
+        const parent = lastAtLevel[level - 1] || root;
+        parent.children.push(node);
+      }
+      lastAtLevel[level] = node;
+      // limpa níveis mais profundos que o atual (novo ramo)
+      Object.keys(lastAtLevel).forEach(k => { if (parseInt(k) > level) delete lastAtLevel[k]; });
+    });
+    // se só há um filho no nível 0 e raiz "Importado" é redundante, promove
+    if (root.children.length === 1) return root.children[0];
+    return root;
+  }
+
+  /* ---------- CAMPOS COMBINADOS (tabela tradicional tipo banco de dados) ----------
+     Formato: cada linha tem TODAS as colunas de nível preenchidas, repetindo
+     valores de categoria/subcategoria. Ex:
+       Categoria   Subcategoria  Item
+       Tecnologia  Smartphones   iPhone 15
+       Tecnologia  Smartphones   Galaxy S24
+     Diferente do formato nativo (uma coluna por linha, célula vazia nas demais),
+     aqui agrupamos valores repetidos em um único nó com vários filhos, e
+     ordenamos as colunas de A-Z da ÚLTIMA para a PRIMEIRA antes de agrupar —
+     isso garante que dados desorganizados fiquem agrupados corretamente mesmo
+     que não venham em blocos contíguos no arquivo original. */
+  function looksLikeCombinedFields(header, body, levelColCount){
+    // heurística: é "campos combinados" se a maioria das linhas tem MAIS DE UMA
+    // coluna de nível preenchida na mesma linha (formato nativo só preenche 1 por linha)
+    if (levelColCount < 2) return false;
+    let multiFilledCount = 0;
+    let checked = 0;
+    for (const row of body) {
+      const cells = row.slice(0, levelColCount);
+      if (!cells.some(c => c && String(c).trim() !== '')) continue;
+      checked++;
+      const filledCount = cells.filter(c => c && String(c).trim() !== '').length;
+      if (filledCount > 1) multiFilledCount++;
+      if (checked >= 20) break; // amostra suficiente
+    }
+    return checked > 0 && (multiFilledCount / checked) > 0.5;
+  }
+
+  function importCombinedFields(header, body, levelColCount, textIdx){
+    // 1) ordena as linhas por coluna, da ÚLTIMA coluna de nível para a PRIMEIRA
+    //    (A-Z), pra agrupar corretamente mesmo com dados fora de ordem
+    const sorted = [...body].sort((a, b) => {
+      for (let col = levelColCount - 1; col >= 0; col--){
+        const av = String(a[col] ?? '').trim();
+        const bv = String(b[col] ?? '').trim();
+        const cmp = av.localeCompare(bv, 'pt-BR', { sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    });
+
+    // 2) detecta se a PRIMEIRA coluna tem um único valor distinto ou vários
+    const firstColValues = new Set(
+      sorted.map(r => String(r[0] ?? '').trim()).filter(v => v)
+    );
+    const singleRootValue = firstColValues.size === 1;
+
+    // 3) monta a árvore agrupando por igualdade de valor em cada nível,
+    //    criando UM nó por valor distinto (não um nó por linha)
+    const root = TreeModel.createNode('Novo projeto', '');
+    // cache de nós já criados por "caminho" (chave = valores concatenados até aquele nível)
+    const nodeCache = {}; // chave: "v0|v1|...|vN" -> node
+
+    sorted.forEach(row => {
+      const values = [];
+      for (let col = 0; col < levelColCount; col++){
+        values.push(String(row[col] ?? '').trim());
+      }
+      const text = textIdx > -1 ? String(row[textIdx] ?? '').trim() : '';
+
+      let parent = root;
+      let pathKey = '';
+      // se a primeira coluna tem valor único, ela vira a PRÓPRIA raiz (nível 1
+      // real do projeto) em vez de gerar um nível extra redundante
+      const startCol = singleRootValue ? 1 : 0;
+      if (singleRootValue && values[0]) {
+        root.name = values[0];
+      }
+
+      for (let col = startCol; col < levelColCount; col++){
+        const val = values[col];
+        if (!val) continue; // célula vazia nessa linha específica: pula esse nível
+        pathKey += '|' + val;
+        let node = nodeCache[pathKey];
+        if (!node) {
+          node = TreeModel.createNode(val, '');
+          parent.children.push(node);
+          nodeCache[pathKey] = node;
+        }
+        parent = node;
+      }
+      // o texto da linha (se houver) vai pro nó FOLHA (último valor preenchido)
+      if (text && parent !== root) {
+        parent.text = text;
+      }
+    });
+
+    return { root, shifted: !singleRootValue };
+  }
+
+  function parseCSVText(text){
+    const lines = text.split(/\r\n|\n/).filter(l => l.length);
+    const rows = lines.map(line => {
+      const cells = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++){
+        const ch = line[i];
+        if (inQuotes){
+          if (ch === '"' && line[i+1] === '"'){ cur += '"'; i++; }
+          else if (ch === '"'){ inQuotes = false; }
+          else cur += ch;
+        } else {
+          if (ch === '"') inQuotes = true;
+          else if (ch === ','){ cells.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      cells.push(cur);
+      return cells;
+    });
+    return rows;
+  }
+
+  function importFromMatrix(matrix){
+    if (!matrix.length) return;
+    const header = matrix[0];
+    const body = matrix.slice(1);
+    // identifica quantas colunas são "níveis" (até achar Texto/Origem ou heuristicamente)
+    let levelColCount = header.length;
+    const textIdx = header.findIndex(h => /texto/i.test(String(h)));
+    const origemIdx = header.findIndex(h => /origem/i.test(String(h)));
+    if (textIdx > -1) levelColCount = textIdx;
+    else if (origemIdx > -1) levelColCount = origemIdx;
+
+    const bodyFiltered = body.filter(r => r.some(c => c && String(c).trim() !== ''));
+
+    let newRoot;
+    let columnShift = 0; // quantas posições os nomes de coluna devem deslocar (raiz extra criada)
+    if (looksLikeCombinedFields(header, bodyFiltered, levelColCount)) {
+      // formato de "campos combinados" — tabela tradicional com valores repetidos
+      const result = importCombinedFields(header, bodyFiltered, levelColCount, textIdx);
+      newRoot = result.root;
+      // se uma raiz "Novo projeto" extra foi criada (1ª coluna tinha vários valores
+      // distintos), os nomes de coluna capturados do cabeçalho original devem
+      // ocupar a partir do Nível 2, não do Nível 1
+      columnShift = result.shifted ? 1 : 0;
+    } else {
+      // formato nativo da ferramenta — uma coluna preenchida por linha
+      const rows = bodyFiltered.map(r => ({
+        cells: r.slice(0, levelColCount),
+        text: textIdx > -1 ? r[textIdx] : ''
+      }));
+      newRoot = rowsToTree(rows);
+    }
+
+    // captura os nomes de cabeçalho das colunas de nível (se diferentes do padrão
+    // "Nível N"), pra manter o nome customizado também depois de importar
+    const capturedNames = [];
+    for (let i = 0; i < levelColCount + columnShift; i++){
+      const sourceIdx = i - columnShift;
+      const h = sourceIdx >= 0 ? String(header[sourceIdx] ?? '').trim() : '';
+      capturedNames.push(h || '');
+    }
+    AppState.columnNames = capturedNames;
+
+    // expande TODA a árvore recém-importada — sem isso, tudo fica colapsado
+    // e a pessoa vê só a raiz na tela, parecendo que a importação falhou
+    expandAll(newRoot);
+
+    TreeModel.setRoot(newRoot);
+    AppState.focusedNodeId = null;
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+    SheetPanel.refresh();
+  }
+
+  function expandAll(node){
+    node.collapsed = false;
+    (node.children || []).forEach(expandAll);
+  }
+
+  function importCSV(file){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const matrix = parseCSVText(e.target.result);
+      importFromMatrix(matrix);
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  async function importXLSX(file){
+    await ensureXLSX();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      importFromMatrix(matrix);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function importHTML(file){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const match = text.match(/<script type="application\/json" id="mindtree-data">([\s\S]*?)<\/script>/);
+      if (!match) {
+        alert('Este arquivo HTML não foi gerado pelo MindTree (estrutura de dados não encontrada).');
+        return;
+      }
+      try {
+        const data = JSON.parse(match[1]);
+        TreeModel.setRoot(data);
+        AppState.focusedNodeId = null;
+
+        // recupera os estilos salvos junto na exportação (formato do
+        // container, altura, tipo de linha, níveis de cor, nomes de coluna)
+        // — sem isso, importar um HTML exportado perdia as configurações
+        // visuais e voltava tudo pro padrão.
+        const styleMatch = text.match(/<script type="application\/json" id="mindtree-style">([\s\S]*?)<\/script>/);
+        if (styleMatch) {
+          try {
+            const style = JSON.parse(styleMatch[1]);
+            if (typeof style.colorLevels === 'number') AppState.colorLevels = style.colorLevels;
+            if (style.containerShape) AppState.containerShape = style.containerShape;
+            if (style.containerHeight) AppState.containerHeight = style.containerHeight;
+            if (style.lineStyle) AppState.lineStyle = style.lineStyle;
+            if (Array.isArray(style.columnNames)) AppState.columnNames = style.columnNames;
+            if (Array.isArray(style.customPalette) && style.customPalette.length) AppState.customPalette = style.customPalette;
+            if (style.rootColor) AppState.rootColor = style.rootColor;
+          } catch (styleErr) {
+            // arquivo antigo, exportado antes dessa funcionalidade — segue
+            // sem aplicar estilo customizado, sem quebrar a importação
+          }
+        }
+
+        Renderer.render();
+        requestAnimationFrame(() => Renderer.fitToScreen());
+        SheetPanel.refresh();
+      } catch (err) {
+        alert('Não foi possível ler os dados deste arquivo HTML.');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  function handleFile(file){
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.csv')) importCSV(file);
+    else if (name.endsWith('.xlsx') || name.endsWith('.xls')) importXLSX(file);
+    else if (name.endsWith('.html') || name.endsWith('.htm')) importHTML(file);
+    else alert('Formato não suportado. Use .csv, .xlsx ou .html');
+  }
+
+  return { exportCSV, exportXLSX, exportHTML, exportCombinedCSV, exportCombinedXLSX, handleFile };
+})();
+
+/* =========================================================
+   POPOVER DE EXPORTAÇÃO (escolher formato)
+   ========================================================= */
+const ExportMenu = (() => {
+  let menu = null;
+  function build(){
+    menu = document.createElement('div');
+    menu.className = 'color-popover export-menu-popover';
+    menu.id = 'export-menu';
+    menu.innerHTML = `
+      <div class="color-pop-head">Formato nativo (níveis)</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+        <button class="mt-btn" data-fmt="csv" style="width:100%;justify-content:flex-start;text-align:left;">CSV (planilha)</button>
+        <button class="mt-btn" data-fmt="xlsx" style="width:100%;justify-content:flex-start;text-align:left;">Excel (.xlsx)</button>
+        <button class="mt-btn" data-fmt="html" style="width:100%;justify-content:flex-start;text-align:left;">HTML (apresentação)</button>
+      </div>
+      <div class="color-pop-head">Campos combinados (tabela)</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="mt-btn" data-fmt="combined-csv" style="width:100%;justify-content:flex-start;text-align:left;">CSV (planilha)</button>
+        <button class="mt-btn" data-fmt="combined-xlsx" style="width:100%;justify-content:flex-start;text-align:left;">Excel (.xlsx)</button>
+      </div>
+    `;
+    document.body.appendChild(menu);
+    menu.addEventListener('click', (ev) => {
+      const fmt = ev.target.dataset.fmt;
+      if (!fmt) return;
+      if (fmt === 'csv') ImportExport.exportCSV();
+      else if (fmt === 'xlsx') ImportExport.exportXLSX();
+      else if (fmt === 'html') ImportExport.exportHTML();
+      else if (fmt === 'combined-csv') ImportExport.exportCombinedCSV();
+      else if (fmt === 'combined-xlsx') ImportExport.exportCombinedXLSX();
+      close();
+    });
+  }
+  function open(btn){
+    if (!menu) build();
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 8) + 'px';
+    menu.style.left = Math.max(8, rect.right - 260) + 'px';
+    menu.classList.add('open');
+  }
+  function close(){ if (menu) menu.classList.remove('open'); }
+  function toggle(btn){
+    if (menu && menu.classList.contains('open')) close();
+    else open(btn);
+  }
+  document.addEventListener('click', (ev) => {
+    const anchorBtn = document.getElementById('btn-menu');
+    if (menu && !menu.contains(ev.target) && ev.target !== anchorBtn && !(anchorBtn && anchorBtn.contains(ev.target))){
+      close();
+    }
+  });
+  return { toggle };
+})();
+
+/* =========================================================
+   GERENCIADOR DE TEMA (claro/escuro)
+   ========================================================= */
+const ThemeManager = (() => {
+  const STORAGE_KEY = 'mindtree-theme';
+  const iconSun = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>';
+  const iconMoon = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>';
+
+  function getStored(){
+    try { return localStorage.getItem(STORAGE_KEY); } catch(e){ return null; }
+  }
+  function setStored(value){
+    try { localStorage.setItem(STORAGE_KEY, value); } catch(e){}
+  }
+
+  function apply(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.innerHTML = theme === 'dark' ? iconMoon : iconSun;
+    Renderer.render();
+  }
+
+  function toggle(){
+    const current = document.documentElement.getAttribute('data-theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = current === 'dark' ? 'light' : 'dark';
+    setStored(next);
+    apply(next);
+  }
+
+  function init(){
+    const stored = getStored();
+    const theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    apply(theme);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev) => {
+      if (!getStored()) apply(ev.matches ? 'dark' : 'light');
+    });
+  }
+
+  return { toggle, init };
+})();
+
+/* =========================================================
+   MODO EDIÇÃO / VISUALIZAÇÃO
+   ========================================================= */
+function setMode(mode){
+  AppState.mode = mode;
+  document.getElementById('mode-edit-btn').classList.toggle('active', mode === 'edit');
+  document.getElementById('mode-view-btn').classList.toggle('active', mode === 'view');
+  Renderer.render();
+}
+
+/* =========================================================
+   BOOTSTRAP — liga eventos do topbar e inicializa
+   ========================================================= */
+/* =========================================================
+   BUSCA — filtra nós por nome, navega entre resultados
+   ========================================================= */
+const SearchManager = (() => {
+  const input = document.getElementById('search-input');
+  const navWrap = document.getElementById('search-nav');
+  const countEl = document.getElementById('search-count');
+  const clearBtn = document.getElementById('search-clear');
+  const prevBtn = document.getElementById('search-prev');
+  const nextBtn = document.getElementById('search-next');
+  const previewWrap = document.getElementById('search-preview');
+  const previewName = document.getElementById('search-preview-name');
+  const previewCount = document.getElementById('search-preview-count');
+  const searchBar = document.getElementById('search-bar');
+  const toggleBtn = document.getElementById('search-toggle-btn');
+
+  let matches = [];   // lista de ids de nós que batem com a busca (na ordem da árvore)
+  let currentIdx = -1;
+
+  function collectAllNodes(node, acc){
+    acc = acc || [];
+    acc.push(node);
+    (node.children || []).forEach(c => collectAllNodes(c, acc));
+    return acc;
+  }
+
+  function expandAncestorsOf(nodeId){
+    // garante que todo ancestral do nó encontrado esteja expandido,
+    // senão o nó buscado fica escondido (collapsed) e não aparece na tela
+    let parent = TreeModel.findParent(nodeId);
+    while (parent) {
+      if (parent.collapsed) TreeModel.updateNode(parent.id, { collapsed: false });
+      parent = TreeModel.findParent(parent.id);
+    }
+  }
+
+  function hidePreview(){
+    previewWrap.style.display = 'none';
+  }
+
+  function runSearch(term){
+    clearHighlights();
+    term = term.trim().toLowerCase();
+    if (!term) {
+      matches = [];
+      currentIdx = -1;
+      navWrap.style.display = 'none';
+      clearBtn.style.display = 'none';
+      hidePreview();
+      return;
+    }
+
+    const all = collectAllNodes(TreeModel.getRoot());
+    matches = all.filter(n => (n.name || '').toLowerCase().includes(term)).map(n => n.id);
+
+    clearBtn.style.display = 'flex';
+    if (!matches.length) {
+      navWrap.style.display = 'none';
+      countEl.textContent = '0/0';
+      hidePreview();
+      return;
+    }
+
+    navWrap.style.display = 'flex';
+    currentIdx = 0;
+    matches.forEach(id => expandAncestorsOf(id));
+    Renderer.render();
+    requestAnimationFrame(() => {
+      highlightMatches();
+      goToCurrent();
+    });
+  }
+
+  function highlightMatches(){
+    document.querySelectorAll('.capsule-rect').forEach(rect => {
+      rect.classList.remove('search-match', 'search-current');
+    });
+    matches.forEach((id, i) => {
+      const wrapper = findCapsuleRectByNodeId(id);
+      if (wrapper) wrapper.classList.add(i === currentIdx ? 'search-current' : 'search-match');
+    });
+  }
+
+  function findCapsuleRectByNodeId(id){
+    const wrapper = document.querySelector(`.node-wrapper[data-node-id="${id}"]`);
+    return wrapper ? wrapper.querySelector('.capsule-rect') : null;
+  }
+
+  function clearHighlights(){
+    document.querySelectorAll('.capsule-rect').forEach(rect => {
+      rect.classList.remove('search-match', 'search-current');
+    });
+  }
+
+  function goToCurrent(){
+    if (currentIdx < 0 || currentIdx >= matches.length) { hidePreview(); return; }
+    const id = matches[currentIdx];
+    countEl.textContent = `${currentIdx + 1}/${matches.length}`;
+    AppState.focusedNodeId = id;
+    const parentId = TreeModel.findParent(id)?.id;
+    Renderer.focusOn(parentId ? [parentId, id] : [id]);
+    highlightMatches();
+
+    // preview imediato: nome do nó encontrado + contagem, centralizado
+    // logo abaixo da caixa de busca, pra confirmação visual sem precisar
+    // procurar o destaque na árvore
+    const node = TreeModel.findNode(id);
+    previewName.textContent = node ? (node.name || 'Sem título') : '';
+    previewCount.textContent = `${currentIdx + 1}/${matches.length}`;
+    previewWrap.style.display = 'flex';
+  }
+
+  function next(){
+    if (!matches.length) return;
+    currentIdx = (currentIdx + 1) % matches.length;
+    goToCurrent();
+  }
+
+  function prev(){
+    if (!matches.length) return;
+    currentIdx = (currentIdx - 1 + matches.length) % matches.length;
+    goToCurrent();
+  }
+
+  function clear(){
+    input.value = '';
+    matches = [];
+    currentIdx = -1;
+    navWrap.style.display = 'none';
+    clearBtn.style.display = 'none';
+    clearHighlights();
+    hidePreview();
+    input.blur();
+    closeMobileBar();
+  }
+
+  // ---- comportamento mobile: barra de busca some por trás de um botão de
+  // lupa em telas pequenas, pra não tampar a árvore — toca a lupa pra abrir,
+  // toca de novo (ou limpa a busca) pra fechar e liberar o espaço de novo
+  function openMobileBar(){
+    searchBar.classList.add('mobile-open');
+    input.focus();
+  }
+  function closeMobileBar(){
+    searchBar.classList.remove('mobile-open');
+  }
+  function toggleMobileBar(){
+    if (searchBar.classList.contains('mobile-open')) closeMobileBar();
+    else openMobileBar();
+  }
+
+  let debounceTimer = null;
+  function init(){
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => runSearch(input.value), 200);
+    });
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.shiftKey ? prev() : next(); }
+      if (ev.key === 'Escape') clear();
+    });
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+    clearBtn.addEventListener('click', clear);
+    toggleBtn.addEventListener('click', toggleMobileBar);
+  }
+
+  return { init, clearHighlights, highlightMatches };
+})();
+
+function bootstrap(){
+  ThemeManager.init();
+  SearchManager.init();
+
+  document.getElementById('mode-edit-btn').addEventListener('click', () => setMode('edit'));
+  document.getElementById('mode-view-btn').addEventListener('click', () => setMode('view'));
+
+  document.getElementById('btn-theme').addEventListener('click', () => ThemeManager.toggle());
+
+  // ---- menu principal (drawer com Cores, Planilha, Estilo, Importar, Exportar, Projetos, Reiniciar) ----
+  const mainMenuDrawer = document.getElementById('main-menu-drawer');
+  const mainMenuOverlay = document.getElementById('main-menu-overlay');
+  function openMainMenu(){
+    mainMenuDrawer.classList.add('open');
+    mainMenuOverlay.classList.add('open');
+  }
+  function closeMainMenu(){
+    mainMenuDrawer.classList.remove('open');
+    mainMenuOverlay.classList.remove('open');
+  }
+  document.getElementById('btn-menu').addEventListener('click', openMainMenu);
+  document.getElementById('main-menu-close').addEventListener('click', closeMainMenu);
+  mainMenuOverlay.addEventListener('click', closeMainMenu);
+
+  document.getElementById('menu-btn-colors').addEventListener('click', () => {
+    closeMainMenu();
+    ColorSelector.open();
+  });
+
+  document.getElementById('menu-btn-sheet').addEventListener('click', () => {
+    closeMainMenu();
+    SheetPanel.open();
+  });
+  document.getElementById('menu-btn-style').addEventListener('click', () => {
+    closeMainMenu();
+    StylePanel.open();
+  });
+  document.getElementById('menu-btn-projects').addEventListener('click', () => {
+    closeMainMenu();
+    ProjectManager.open();
+  });
+
+  document.getElementById('menu-btn-export').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeMainMenu();
+    ExportMenu.toggle(document.getElementById('btn-menu'));
+  });
+
+  const fileInput = document.getElementById('file-input');
+  document.getElementById('menu-btn-import').addEventListener('click', () => {
+    closeMainMenu();
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', (ev) => {
+    const file = ev.target.files[0];
+    if (file) ImportExport.handleFile(file);
+    fileInput.value = '';
+  });
+
+  document.getElementById('menu-btn-reset').addEventListener('click', () => {
+    closeMainMenu();
+    ProjectManager.startNewProject();
+  });
+
+  // ---- zoom / pan / fit ----
+  document.getElementById('zoom-in').addEventListener('click', () => Renderer.zoomBy(1.3));
+  document.getElementById('zoom-out').addEventListener('click', () => Renderer.zoomBy(1 / 1.3));
+  document.getElementById('zoom-fit').addEventListener('click', () => Renderer.fitToScreen());
+
+  // ---- controles de nível global (abrir/fechar por camada, por nó, ou tudo de uma vez) ----
+  document.getElementById('level-expand-level').addEventListener('click', () => {
+    TreeModel.expandNextNode();
+    Renderer.render();
+    SheetPanel.refresh();
+  });
+  document.getElementById('level-expand-one').addEventListener('click', () => {
+    TreeModel.expandNextLevel();
+    Renderer.render();
+    SheetPanel.refresh();
+  });
+  document.getElementById('level-collapse-one').addEventListener('click', () => {
+    TreeModel.collapseLastLevel();
+    Renderer.render();
+    SheetPanel.refresh();
+  });
+  document.getElementById('level-expand-all').addEventListener('click', () => {
+    TreeModel.expandAllLevels();
+    Renderer.render();
+    SheetPanel.refresh();
+  });
+  document.getElementById('level-collapse-all').addEventListener('click', () => {
+    TreeModel.collapseAllLevels();
+    Renderer.render();
+    SheetPanel.refresh();
+  });
+
+  // clique no nó raiz pra editar nome inicial, se ainda vazio
+  window.addEventListener('resize', () => Renderer.render());
+
+  Renderer.render();
+  requestAnimationFrame(() => Renderer.fitToScreen());
+  ProjectNameBar.markClean(); // estado inicial: nada editado ainda, nada pra salvar
+  ProjectNameBar.refresh();
+
+  // se a raiz não tem nome customizado ainda, abre edição automaticamente
+  const root = TreeModel.getRoot();
+  if (root.name === 'Novo projeto') {
+    setTimeout(() => NodeInteraction.openEditModal(root.id, false), 300);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bootstrap);
+
+// ===== PWA: registra o service worker (suporte offline + instalação) =====
+// roda só em produção servida via http(s) — service workers não funcionam
+// em arquivos abertos direto (file://), então a ferramenta continua
+// funcionando normalmente nesse modo, só sem o recurso offline
+if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      // falha silenciosa: app continua funcionando normalmente sem cache offline
+    });
+  });
+}
+</script>
+</body>
+</html>
