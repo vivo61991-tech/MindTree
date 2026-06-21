@@ -652,6 +652,12 @@
     display:flex;flex-direction:column;
     animation:mt-pop .15s ease;
   }
+  .mt-draggable-head{
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+  }
+  .mt-draggable-head:active{cursor:grabbing;}
   .mt-view-panel .mt-modal-body{overflow-y:auto;}
   .mt-view-text{font-size:14px;line-height:1.6;color:var(--text-dim);margin:0 0 14px;}
   .mt-view-text.mt-faint{color:var(--text-faint);font-style:italic;}
@@ -1582,6 +1588,7 @@ const AppState = {
   colorLevels: 4,          // quantos níveis diferenciar cor
   focusedNodeId: null,     // último nó focado (clique)
   editingFieldId: null,    // id do nó cujo campo está aberto pra edição
+  viewPanelNodeId: null,   // id do nó cuja tela de descrição está aberta no momento (mostra ◆ na cápsula)
   containerShape: 'capsule', // 'capsule' | 'rect' | 'rounded'
   containerHeight: 'max',    // 'max' | 'min'
   lineStyle: 'smooth',       // 'smooth' | 'straight' | 'rounded'
@@ -2046,7 +2053,7 @@ const Renderer = (() => {
       .attr('y', capH / 2)
       .attr('text-anchor', 'middle')
       .attr('fill', color.text)
-      .text(truncate(node.name || 'Sem título', 50));
+      .text((node.id === AppState.viewPanelNodeId ? '◆ ' : '') + truncate(node.name || 'Sem título', 50));
 
     // ---- linha curta conectando cápsula ao círculo (nó) ----
     const circleX = w + CAPSULE_GAP + CIRCLE_R;
@@ -2334,6 +2341,63 @@ const NodeInteraction = (() => {
   }
 
   /* ---------- PAINEL DE VISUALIZAÇÃO (nome + texto + filhos) ---------- */
+  // guarda a posição (top/left/width em px) escolhida pelo usuário ao
+  // arrastar o painel pelo cabeçalho — persiste enquanto se navega entre
+  // nós (voltar / entrar em filho), e é resetada quando o painel é fechado
+  // de vez, pra a próxima abertura voltar a nascer centralizada na tela.
+  // só passa a valer depois que o usuário arrasta ao menos uma vez — até
+  // lá, o painel continua centralizando normalmente a cada navegação.
+  let viewPanelPos = null;
+
+  function makeDraggable(panelEl, headEl){
+    let dragging = false;
+    let startX = 0, startY = 0, startTop = 0, startLeft = 0;
+
+    function onPointerDown(ev){
+      // não inicia arrasto ao clicar nos botões do cabeçalho (voltar / fechar)
+      if (ev.target.closest('.mt-back') || ev.target.closest('.mt-x')) return;
+      dragging = true;
+      const rect = panelEl.getBoundingClientRect();
+      startX = ev.clientX; startY = ev.clientY;
+      startTop = rect.top; startLeft = rect.left;
+      headEl.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    }
+    function onPointerMove(ev){
+      if (!dragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      let top = startTop + dy;
+      let left = startLeft + dx;
+      // mantém o painel dentro da tela (com uma pequena margem)
+      const margin = 8;
+      const maxLeft = window.innerWidth - panelEl.offsetWidth - margin;
+      const maxTop = window.innerHeight - 40 - margin; // não deixa o cabeçalho sumir embaixo
+      top = Math.max(margin, Math.min(top, maxTop));
+      left = Math.max(margin, Math.min(left, maxLeft));
+      viewPanelPos = { top, left, width: panelEl.offsetWidth };
+      applyPanelPos(panelEl);
+    }
+    function onPointerUp(ev){
+      dragging = false;
+      try { headEl.releasePointerCapture(ev.pointerId); } catch(e) {}
+    }
+
+    headEl.addEventListener('pointerdown', onPointerDown);
+    headEl.addEventListener('pointermove', onPointerMove);
+    headEl.addEventListener('pointerup', onPointerUp);
+    headEl.addEventListener('pointercancel', onPointerUp);
+  }
+
+  function applyPanelPos(panelEl){
+    if (!viewPanelPos) return;
+    panelEl.style.width = viewPanelPos.width + 'px';
+    panelEl.style.position = 'fixed';
+    panelEl.style.top = viewPanelPos.top + 'px';
+    panelEl.style.left = viewPanelPos.left + 'px';
+    panelEl.style.margin = '0';
+  }
+
   function openViewPanel(nodeId, history){
     history = history || [];
     const node = TreeModel.findNode(nodeId);
@@ -2341,6 +2405,11 @@ const NodeInteraction = (() => {
 
     let panel = document.getElementById('mt-view-panel');
     if (panel) panel.remove();
+
+    // marca este nó como "tela de descrição aberta" — a cápsula dele na
+    // árvore recebe o prefixo ◆ enquanto o painel estiver aberto/navegando
+    AppState.viewPanelNodeId = nodeId;
+    Renderer.render();
 
     panel = document.createElement('div');
     panel.id = 'mt-view-panel';
@@ -2364,8 +2433,8 @@ const NodeInteraction = (() => {
       : '';
 
     panel.innerHTML = `
-      <div class="mt-view-panel">
-        <div class="mt-modal-head">
+      <div class="mt-view-panel" id="mt-view-panel-inner">
+        <div class="mt-modal-head mt-draggable-head">
           <div class="mt-modal-head-left">
             ${backBtnHtml}
             <span>${escapeHtml(node.name || '(sem nome)')}</span>
@@ -2380,6 +2449,20 @@ const NodeInteraction = (() => {
       </div>
     `;
     document.body.appendChild(panel);
+
+    const panelInner = panel.querySelector('#mt-view-panel-inner');
+    const headEl = panel.querySelector('.mt-draggable-head');
+
+    // se o usuário já arrastou o painel antes (dentro deste fluxo de
+    // navegação), reaplica a mesma posição — o TOPO fica fixo onde foi
+    // solto, só a altura do painel se ajusta ao novo conteúdo. Antes do
+    // primeiro arrasto, o painel continua centralizado normalmente a cada
+    // navegação (comportamento original).
+    if (viewPanelPos) {
+      applyPanelPos(panelInner);
+    }
+
+    makeDraggable(panelInner, headEl);
 
     panel.addEventListener('click', (ev) => {
       const backBtn = ev.target.closest('[data-action="back"]');
@@ -2406,6 +2489,11 @@ const NodeInteraction = (() => {
       }
       if (ev.target === panel || ev.target.dataset.action === 'close') {
         panel.remove();
+        // fechou de vez (sem ir pra outro nó): limpa a marcação ◆ na árvore
+        // e esquece a posição arrastada — a próxima abertura volta ao centro
+        AppState.viewPanelNodeId = null;
+        viewPanelPos = null;
+        Renderer.render();
       }
     });
   }
@@ -2643,14 +2731,6 @@ const ProjectManager = (() => {
       ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  // formata pra uso em NOME de arquivo/projeto: yyyy-mm-dd_hh-mm
-  function formatTimestampForName(ts){
-    const d = new Date(ts);
-    const pad = (n) => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-      '_' + pad(d.getHours()) + '-' + pad(d.getMinutes());
-  }
-
   function snapshotState(){
     return {
       tree: TreeModel.getRoot(),
@@ -2664,14 +2744,10 @@ const ProjectManager = (() => {
     };
   }
 
-  function saveAsNew(forcedName, opts){
-    opts = opts || {};
+  function saveAsNew(forcedName){
     const defaultName = pendingProjectName || getCurrentProjectName() || TreeModel.getRoot().name || 'Projeto sem nome';
     let trimmed;
-    if (opts.autoName) {
-      // salvamento rápido: nome do projeto + data/hora, sem perguntar nada
-      trimmed = defaultName + '_' + formatTimestampForName(Date.now());
-    } else if (forcedName !== undefined) {
+    if (forcedName !== undefined) {
       trimmed = forcedName;
     } else {
       const name = prompt('Nome do projeto:', defaultName);
@@ -2699,8 +2775,9 @@ const ProjectManager = (() => {
 
   // "Salvar rápido" — usado pelo botão flutuante de ícone no topo.
   // Se já existe um projeto carregado, sobrescreve ELE diretamente (sem
-  // perguntar nada). Se ainda não existe nenhum projeto salvo, salva como
-  // novo automaticamente usando nome do projeto + data/hora, sem prompt.
+  // perguntar nada). Se ainda não existe nenhum projeto salvo, comporta-se
+  // como "salvar como": pede o nome do projeto (igual ao botão Salvar do
+  // menu de Projetos).
   function quickSave(){
     if (currentProjectId) {
       const projects = loadAll();
@@ -2711,7 +2788,7 @@ const ProjectManager = (() => {
       }
       currentProjectId = null;
     }
-    saveAsNew(undefined, { autoName: true });
+    saveAsNew();
   }
 
   // "Salvar" — se já existe um projeto carregado, sobrescreve ELE diretamente
@@ -2767,6 +2844,7 @@ const ProjectManager = (() => {
     AppState.customPalette = (entry.state.customPalette && entry.state.customPalette.length) ? entry.state.customPalette : [...DEFAULT_PALETTE_HEX];
     AppState.rootColor = entry.state.rootColor || DEFAULT_ROOT_COLOR;
     AppState.focusedNodeId = null;
+    AppState.viewPanelNodeId = null;
 
     currentProjectId = id;
     pendingProjectName = null;
@@ -2863,6 +2941,7 @@ const ProjectManager = (() => {
 
     TreeModel.setRoot(TreeModel.createNode(trimmed, ''));
     AppState.focusedNodeId = null;
+    AppState.viewPanelNodeId = null;
     AppState.colorLevels = 4;
     AppState.containerShape = 'capsule';
     AppState.containerHeight = 'max';
@@ -3208,6 +3287,28 @@ const ImportExport = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // formata pra uso em NOME de arquivo: yyyy-mm-dd_hh-mm
+  function formatTimestampForFilename(ts){
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + '-' + pad(d.getMinutes());
+  }
+
+  // remove caracteres inválidos em nomes de arquivo (/ \ : * ? " < > |)
+  function sanitizeForFilename(str){
+    return String(str || '').replace(/[\/\\:*?"<>|]/g, '-').trim();
+  }
+
+  // monta o nome final do arquivo exportado: mantém o nome-base que cada
+  // formato já usava, e acrescenta o nome do projeto + data/hora
+  // (yyyy-mm-dd_hh-mm), ex: "mindtree_Minha Árvore_2026-06-21_14-37.csv"
+  function buildExportFilename(baseName, ext){
+    const projectName = ProjectManager.getCurrentProjectName() || TreeModel.getRoot().name || 'Sem título';
+    const stamp = formatTimestampForFilename(Date.now());
+    return `${baseName}_${sanitizeForFilename(projectName)}_${stamp}.${ext}`;
+  }
+
   function escapeHtmlBuild(str){
     if (!str) return '';
     return String(str)
@@ -3225,7 +3326,7 @@ const ImportExport = (() => {
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }).join(',')
     ).join('\r\n');
-    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), 'mindtree.csv');
+    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), buildExportFilename('mindtree', 'csv'));
   }
 
   async function exportXLSX(){
@@ -3234,7 +3335,7 @@ const ImportExport = (() => {
     const ws = XLSX.utils.aoa_to_sheet(matrix);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'MindTree');
-    XLSX.writeFile(wb, 'mindtree.xlsx');
+    XLSX.writeFile(wb, buildExportFilename('mindtree', 'xlsx'));
   }
 
   /* ---------- EXPORTAR EM "CAMPOS COMBINADOS" (tabela tradicional) ----------
@@ -3282,7 +3383,7 @@ const ImportExport = (() => {
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }).join(',')
     ).join('\r\n');
-    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), 'mindtree-campos-combinados.csv');
+    downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }), buildExportFilename('mindtree-campos-combinados', 'csv'));
   }
 
   async function exportCombinedXLSX(){
@@ -3291,7 +3392,7 @@ const ImportExport = (() => {
     const ws = XLSX.utils.aoa_to_sheet(matrix);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'MindTree');
-    XLSX.writeFile(wb, 'mindtree-campos-combinados.xlsx');
+    XLSX.writeFile(wb, buildExportFilename('mindtree-campos-combinados', 'xlsx'));
   }
 
   /* ---------- EXPORTAR HTML (apresentação, somente visualização) ---------- */
@@ -3303,7 +3404,7 @@ const ImportExport = (() => {
     const customPaletteJson = JSON.stringify((AppState.customPalette && AppState.customPalette.length) ? AppState.customPalette : DEFAULT_PALETTE_HEX);
     const rootColor = AppState.rootColor || DEFAULT_ROOT_COLOR;
     const html = buildStandaloneHTML(dataJson, colorLevels, AppState.containerShape, AppState.containerHeight, AppState.lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor);
-    downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), 'mindtree-apresentacao.html');
+    downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), buildExportFilename('mindtree-apresentacao', 'html'));
   }
 
   function buildStandaloneHTML(dataJson, colorLevels, containerShape, containerHeight, lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor){
@@ -3330,6 +3431,8 @@ const ImportExport = (() => {
   .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.25);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
   .mt-view-panel{width:100%;max-width:460px;max-height:80vh;background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;}
   .mt-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;gap:10px;}
+  .mt-draggable-head{cursor:grab;touch-action:none;user-select:none;}
+  .mt-draggable-head:active{cursor:grabbing;}
   .mt-modal-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
   .mt-modal-head-left span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .mt-back{background:var(--panel-2);border:1px solid var(--border-light);color:var(--text-dim);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;}
@@ -3519,6 +3622,9 @@ function buildHierarchy(){
   return root;
 }
 let lastLayoutRoot = null;
+let viewPanelNodeId = null; // id do nó cuja tela de descrição está aberta — mostra ◆ na cápsula dele
+let viewPanelPos = null; // posição (top/left/width) escolhida ao arrastar o painel pelo cabeçalho;
+                          // só passa a valer depois do primeiro arrasto, e é resetada ao fechar o painel
 function computeLayout(){
   const root = buildHierarchy();
   const layout = d3.tree().nodeSize([ROW_H, 0]);
@@ -3651,7 +3757,7 @@ function render(){
       .on('click', () => openView(d.data.id));
     capGrp.append('rect').attr('width',w).attr('height',capH).attr('rx',capRadius).attr('fill',color.fill);
     capGrp.append('text').attr('class','capsule-label').attr('x',w/2).attr('y',capH/2)
-      .attr('fill',color.text).text(truncate(d.data.name||'Sem título',50));
+      .attr('fill',color.text).text((d.data.id===viewPanelNodeId?'◆ ':'')+truncate(d.data.name||'Sem título',50));
 
     const circleX = w + CAPSULE_GAP + CIRCLE_R;
     g.append('line').attr('x1',w).attr('y1',0).attr('x2',circleX-CIRCLE_R).attr('y2',0)
@@ -3774,10 +3880,63 @@ function collapseAllLevels(){
   (TREE_DATA.children || []).forEach(c => { c.collapsed = true; collapseDescendants(c); });
   render();
 }
+function makeViewPanelDraggable(panelEl, headEl){
+  let dragging = false;
+  let startX = 0, startY = 0, startTop = 0, startLeft = 0;
+
+  function onPointerDown(ev){
+    if (ev.target.closest('.mt-back') || ev.target.closest('#vpx')) return;
+    dragging = true;
+    const rect = panelEl.getBoundingClientRect();
+    startX = ev.clientX; startY = ev.clientY;
+    startTop = rect.top; startLeft = rect.left;
+    headEl.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  }
+  function onPointerMove(ev){
+    if (!dragging) return;
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+    let top = startTop + dy;
+    let left = startLeft + dx;
+    const margin = 8;
+    const maxLeft = window.innerWidth - panelEl.offsetWidth - margin;
+    const maxTop = window.innerHeight - 40 - margin;
+    top = Math.max(margin, Math.min(top, maxTop));
+    left = Math.max(margin, Math.min(left, maxLeft));
+    viewPanelPos = { top, left, width: panelEl.offsetWidth };
+    applyViewPanelPos(panelEl);
+  }
+  function onPointerUp(ev){
+    dragging = false;
+    try { headEl.releasePointerCapture(ev.pointerId); } catch(e) {}
+  }
+
+  headEl.addEventListener('pointerdown', onPointerDown);
+  headEl.addEventListener('pointermove', onPointerMove);
+  headEl.addEventListener('pointerup', onPointerUp);
+  headEl.addEventListener('pointercancel', onPointerUp);
+}
+
+function applyViewPanelPos(panelEl){
+  if (!viewPanelPos) return;
+  panelEl.style.width = viewPanelPos.width + 'px';
+  panelEl.style.position = 'fixed';
+  panelEl.style.top = viewPanelPos.top + 'px';
+  panelEl.style.left = viewPanelPos.left + 'px';
+  panelEl.style.margin = '0';
+}
+
 function openView(nodeId, history){
   history = history || [];
   const node = findNode(nodeId); if(!node) return;
   let panel = document.getElementById('vp'); if (panel) panel.remove();
+
+  // marca este nó como "tela de descrição aberta" — a cápsula dele na
+  // árvore recebe o prefixo ◆ enquanto o painel estiver aberto/navegando
+  viewPanelNodeId = nodeId;
+  render();
+
   panel = document.createElement('div'); panel.id='vp'; panel.className='mt-overlay';
   const hasChildren = node.children && node.children.length > 0;
   let childrenSectionHtml = '';
@@ -3791,8 +3950,22 @@ function openView(nodeId, history){
   const backBtnHtml = history.length
     ? '<button class="mt-back" id="vpback" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>'
     : '';
-  panel.innerHTML = \`<div class="mt-view-panel"><div class="mt-modal-head"><div class="mt-modal-head-left">\${backBtnHtml}<span>\${escapeHtml(node.name||'Sem título')}</span></div><button class="mt-x" id="vpx">&times;</button></div><div class="mt-modal-body">\${node.text?'<p class="mt-view-text">'+escapeHtml(node.text)+'</p>':'<p class="mt-view-text mt-faint">Sem descrição.</p>'}\${childrenSectionHtml}</div></div>\`;
+  panel.innerHTML = \`<div class="mt-view-panel" id="vp-inner"><div class="mt-modal-head mt-draggable-head"><div class="mt-modal-head-left">\${backBtnHtml}<span>\${escapeHtml(node.name||'Sem título')}</span></div><button class="mt-x" id="vpx">&times;</button></div><div class="mt-modal-body">\${node.text?'<p class="mt-view-text">'+escapeHtml(node.text)+'</p>':'<p class="mt-view-text mt-faint">Sem descrição.</p>'}\${childrenSectionHtml}</div></div>\`;
   document.body.appendChild(panel);
+
+  const panelInner = panel.querySelector('#vp-inner');
+  const headEl = panel.querySelector('.mt-draggable-head');
+
+  // se o usuário já arrastou o painel antes (dentro deste fluxo de
+  // navegação), reaplica a mesma posição — o TOPO fica fixo onde foi
+  // solto, só a altura do painel se ajusta ao novo conteúdo. Antes do
+  // primeiro arrasto, o painel continua centralizado normalmente.
+  if (viewPanelPos) {
+    applyViewPanelPos(panelInner);
+  }
+
+  makeViewPanelDraggable(panelInner, headEl);
+
   panel.addEventListener('click', ev => {
     const backBtn = ev.target.closest('#vpback');
     if (backBtn) {
@@ -3804,7 +3977,14 @@ function openView(nodeId, history){
     }
     const row = ev.target.closest('.mt-child-row');
     if (row) { panel.remove(); openView(row.dataset.id, [...history, nodeId]); return; }
-    if (ev.target===panel || ev.target.id==='vpx') panel.remove();
+    if (ev.target===panel || ev.target.id==='vpx') {
+      panel.remove();
+      // fechou de vez (sem ir pra outro nó): limpa a marcação ◆ na árvore
+      // e esquece a posição arrastada — a próxima abertura volta ao centro
+      viewPanelNodeId = null;
+      viewPanelPos = null;
+      render();
+    }
   });
 }
 function getNodeScreenPos(d){
