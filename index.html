@@ -321,6 +321,37 @@
   #search-toggle-btn svg{width:18px;height:18px;}
   #search-toggle-btn:hover{color:var(--text);}
 
+  /* ---- BOTÃO DE SALVAR RÁPIDO (flutuante, topo esquerdo, só ícone) ----
+     só aparece quando existem alterações não salvas; some assim que o
+     projeto é salvo. Clicar salva direto se já existe projeto carregado,
+     ou salva como novo automaticamente (nome do projeto + data/hora) caso
+     ainda não exista nenhum projeto salvo. */
+  #btn-quick-save{
+    display:none;
+    position:fixed;
+    top:calc(var(--topbar-h) + 10px);
+    left:14px;
+    width:38px;height:38px;
+    align-items:center;justify-content:center;
+    background:var(--accent);
+    border:1px solid var(--accent);
+    border-radius:50%;
+    color:#fff;
+    box-shadow:var(--shadow);
+    cursor:pointer;
+    z-index:61;
+    opacity:0;
+    transform:scale(.85);
+    transition:opacity .15s ease, transform .15s ease;
+  }
+  #btn-quick-save.show{
+    display:flex;
+    opacity:1;
+    transform:scale(1);
+  }
+  #btn-quick-save svg{width:17px;height:17px;}
+  #btn-quick-save:hover{background:var(--accent-2);}
+
   /* ---- BOTÃO DE MENU (flutuante, canto inferior esquerdo, mesmo estilo da lupa) ---- */
   #btn-menu{
     display:flex;
@@ -1017,6 +1048,10 @@
   <span id="project-name-text">Sem título</span>
   <span id="project-name-unsaved" title="Alterações não salvas">●</span>
 </div>
+
+<button id="btn-quick-save" title="Salvar">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+</button>
 
 <div id="save-toast"></div>
 
@@ -2608,6 +2643,14 @@ const ProjectManager = (() => {
       ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // formata pra uso em NOME de arquivo/projeto: yyyy-mm-dd_hh-mm
+  function formatTimestampForName(ts){
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + '-' + pad(d.getMinutes());
+  }
+
   function snapshotState(){
     return {
       tree: TreeModel.getRoot(),
@@ -2621,10 +2664,14 @@ const ProjectManager = (() => {
     };
   }
 
-  function saveAsNew(forcedName){
+  function saveAsNew(forcedName, opts){
+    opts = opts || {};
     const defaultName = pendingProjectName || getCurrentProjectName() || TreeModel.getRoot().name || 'Projeto sem nome';
     let trimmed;
-    if (forcedName !== undefined) {
+    if (opts.autoName) {
+      // salvamento rápido: nome do projeto + data/hora, sem perguntar nada
+      trimmed = defaultName + '_' + formatTimestampForName(Date.now());
+    } else if (forcedName !== undefined) {
       trimmed = forcedName;
     } else {
       const name = prompt('Nome do projeto:', defaultName);
@@ -2648,6 +2695,23 @@ const ProjectManager = (() => {
       ProjectNameBar.refresh();
       Toast.show('Projeto salvo');
     }
+  }
+
+  // "Salvar rápido" — usado pelo botão flutuante de ícone no topo.
+  // Se já existe um projeto carregado, sobrescreve ELE diretamente (sem
+  // perguntar nada). Se ainda não existe nenhum projeto salvo, salva como
+  // novo automaticamente usando nome do projeto + data/hora, sem prompt.
+  function quickSave(){
+    if (currentProjectId) {
+      const projects = loadAll();
+      const exists = projects.some(p => p.id === currentProjectId);
+      if (exists) {
+        overwrite(currentProjectId);
+        return;
+      }
+      currentProjectId = null;
+    }
+    saveAsNew(undefined, { autoName: true });
   }
 
   // "Salvar" — se já existe um projeto carregado, sobrescreve ELE diretamente
@@ -2854,7 +2918,7 @@ const ProjectManager = (() => {
   }
 
   bindEvents();
-  return { open, close, save, saveAs, startNewProject, getCurrentProjectName, getCurrentProjectId, clearCurrentProject };
+  return { open, close, save, saveAs, quickSave, startNewProject, getCurrentProjectName, getCurrentProjectId, clearCurrentProject };
 })();
 
 /* =========================================================
@@ -2865,6 +2929,7 @@ const ProjectManager = (() => {
 const ProjectNameBar = (() => {
   const textEl = document.getElementById('project-name-text');
   const unsavedEl = document.getElementById('project-name-unsaved');
+  const quickSaveBtn = document.getElementById('btn-quick-save');
   let dirty = false; // true quando há alterações desde o último save
 
   function refresh(){
@@ -2879,6 +2944,7 @@ const ProjectNameBar = (() => {
       saveLabel.textContent = name ? 'Salvar' : 'Salvar projeto';
     }
     unsavedEl.classList.toggle('show', dirty);
+    if (quickSaveBtn) quickSaveBtn.classList.toggle('show', dirty);
 
     const saveBtn = document.getElementById('btn-save-project');
     if (saveBtn) {
@@ -2891,6 +2957,7 @@ const ProjectNameBar = (() => {
     if (!dirty) {
       dirty = true;
       unsavedEl.classList.add('show');
+      if (quickSaveBtn) quickSaveBtn.classList.add('show');
       const saveBtn = document.getElementById('btn-save-project');
       if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-disabled'); }
     }
@@ -2898,6 +2965,7 @@ const ProjectNameBar = (() => {
   function markClean(){
     dirty = false;
     unsavedEl.classList.remove('show');
+    if (quickSaveBtn) quickSaveBtn.classList.remove('show');
     const saveBtn = document.getElementById('btn-save-project');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-disabled'); }
   }
@@ -4370,6 +4438,9 @@ function bootstrap(){
   document.getElementById('mode-view-btn').addEventListener('click', () => setMode('view'));
 
   document.getElementById('btn-theme').addEventListener('click', () => ThemeManager.toggle());
+
+  // ---- salvar rápido (botão flutuante, só ícone, aparece quando há alterações não salvas) ----
+  document.getElementById('btn-quick-save').addEventListener('click', () => ProjectManager.quickSave());
 
   // ---- menu principal (drawer com Cores, Planilha, Estilo, Importar, Exportar, Projetos, Reiniciar) ----
   const mainMenuDrawer = document.getElementById('main-menu-drawer');
