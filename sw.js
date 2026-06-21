@@ -4,7 +4,7 @@
 // ferramenta. Sempre que uma versão nova for publicada, suba o número do
 // CACHE_VERSION abaixo — isso força o navegador a baixar tudo de novo.
 
-const CACHE_VERSION = 'mindtree-v1';
+const CACHE_VERSION = 'mindtree-v2';
 
 // arquivos do próprio app, sempre disponíveis localmente
 const APP_SHELL = [
