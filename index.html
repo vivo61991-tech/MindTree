@@ -609,6 +609,17 @@
   }
   .mt-back:hover{background:var(--panel);color:var(--text);}
   .mt-back svg{width:15px;height:15px;}
+  .mt-sibling-nav-group{display:flex;align-items:center;gap:6px;flex:none;}
+  .mt-sibling-nav{
+    background:var(--panel-2);border:1px solid var(--border-light);
+    color:var(--text-dim);
+    width:26px;height:26px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex:none;
+    transition:background .15s,color .15s;
+  }
+  .mt-sibling-nav:hover{background:var(--panel);color:var(--text);}
+  .mt-sibling-nav svg{width:15px;height:15px;}
   .mt-x{
     background:none;border:none;color:var(--text-dim);
     font-size:22px;line-height:1;cursor:pointer;padding:0 4px;
@@ -689,7 +700,7 @@
   .mt-view-panel{
     pointer-events:auto;
     width:100%;max-width:460px;max-height:80vh;
-    background:color-mix(in srgb, var(--panel) 55%, transparent);
+    background:color-mix(in srgb, var(--panel) 78%, transparent);
     backdrop-filter:blur(14px);
     -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border-light);
@@ -2607,8 +2618,8 @@ const NodeInteraction = (() => {
     let startX = 0, startY = 0, startTop = 0, startLeft = 0;
 
     function onPointerDown(ev){
-      // não inicia arrasto ao clicar nos botões do cabeçalho (voltar / fechar)
-      if (ev.target.closest('.mt-back') || ev.target.closest('.mt-x')) return;
+      // não inicia arrasto ao clicar nos botões do cabeçalho (voltar / fechar / irmãos)
+      if (ev.target.closest('.mt-back') || ev.target.closest('.mt-x') || ev.target.closest('.mt-sibling-nav')) return;
       dragging = true;
       const rect = panelEl.getBoundingClientRect();
       startX = ev.clientX; startY = ev.clientY;
@@ -2649,6 +2660,21 @@ const NodeInteraction = (() => {
     panelEl.style.top = viewPanelPos.top + 'px';
     panelEl.style.left = viewPanelPos.left + 'px';
     panelEl.style.margin = '0';
+  }
+
+  // retorna o id do irmão anterior (acima) e do próximo (abaixo) do nó,
+  // dentro da lista de filhos do mesmo pai — usado pelos indicadores ↑/↓
+  // no cabeçalho da tela de descrição. Nó raiz (sem pai) não tem irmãos.
+  function getSiblingNav(nodeId){
+    const parent = TreeModel.findParent(nodeId);
+    if (!parent) return { prevId: null, nextId: null };
+    const siblings = parent.children;
+    const idx = siblings.findIndex(c => c.id === nodeId);
+    if (idx === -1) return { prevId: null, nextId: null };
+    return {
+      prevId: idx > 0 ? siblings[idx - 1].id : null,
+      nextId: idx < siblings.length - 1 ? siblings[idx + 1].id : null,
+    };
   }
 
   function openViewPanel(nodeId, history){
@@ -2703,6 +2729,16 @@ const NodeInteraction = (() => {
       ? `<button class="mt-back" data-action="back" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>`
       : '';
 
+    // indicadores de irmão (↑ acessa o de cima, ↓ acessa o de baixo) — só
+    // aparecem quando existe o irmão correspondente naquela direção
+    const { prevId: siblingPrevId, nextId: siblingNextId } = getSiblingNav(nodeId);
+    const siblingNavHtml = (siblingPrevId || siblingNextId) ? `
+      <div class="mt-sibling-nav-group">
+        ${siblingPrevId ? `<button class="mt-sibling-nav" data-action="sibling-prev" title="Irmão anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg></button>` : ''}
+        ${siblingNextId ? `<button class="mt-sibling-nav" data-action="sibling-next" title="Próximo irmão"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></button>` : ''}
+      </div>
+    ` : '';
+
     panel.innerHTML = `
       <div class="mt-view-panel" id="mt-view-panel-inner">
         <div class="mt-modal-head mt-draggable-head">
@@ -2710,6 +2746,7 @@ const NodeInteraction = (() => {
             ${backBtnHtml}
             <span>${escapeHtml(node.name || '(sem nome)')}</span>
           </div>
+          ${siblingNavHtml}
           <button class="mt-x" data-action="close">&times;</button>
         </div>
         <div class="mt-modal-body">
@@ -2754,6 +2791,24 @@ const NodeInteraction = (() => {
         Renderer.focusOn(prevParentId ? [prevParentId, prevId] : [prevId]);
         if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
         viewPanelNavTimer = setTimeout(() => openViewPanel(prevId, newHistory), NAV_DELAY_MS);
+        return;
+      }
+      const siblingBtn = ev.target.closest('[data-action="sibling-prev"], [data-action="sibling-next"]');
+      if (siblingBtn) {
+        const goingPrev = siblingBtn.dataset.action === 'sibling-prev';
+        const { prevId: siblingPrevId, nextId: siblingNextId } = getSiblingNav(nodeId);
+        const targetId = goingPrev ? siblingPrevId : siblingNextId;
+        if (!targetId) return;
+        panel.remove();
+        AppState.focusedNodeId = targetId;
+        Renderer.render();
+        // troca de irmão fica no MESMO nível — usa o mesmo pai do histórico
+        // pra enquadrar a câmera, e mantém o history como estava (não desce
+        // nem sobe nível, só muda de posição entre os irmãos)
+        const siblingParentId = history[history.length - 1] || null;
+        Renderer.focusOn(siblingParentId ? [siblingParentId, targetId] : [targetId]);
+        if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+        viewPanelNavTimer = setTimeout(() => openViewPanel(targetId, history), NAV_DELAY_MS);
         return;
       }
       const childRow = ev.target.closest('.mt-child-row');
@@ -4163,6 +4218,21 @@ function findParentInTree(targetId, node, parent){
   return null;
 }
 
+// retorna o id do irmão anterior (acima) e do próximo (abaixo) do nó,
+// dentro da lista de filhos do mesmo pai — usado pelos indicadores ↑/↓
+// no cabeçalho da tela de descrição. Nó raiz (sem pai) não tem irmãos.
+function getSiblingNav(nodeId){
+  const parent = findParentInTree(nodeId);
+  if (!parent) return { prevId: null, nextId: null };
+  const siblings = parent.children;
+  const idx = siblings.findIndex(c => c.id === nodeId);
+  if (idx === -1) return { prevId: null, nextId: null };
+  return {
+    prevId: idx > 0 ? siblings[idx - 1].id : null,
+    nextId: idx < siblings.length - 1 ? siblings[idx + 1].id : null,
+  };
+}
+
 function flattenPreOrderExported(node, acc){
   node = node || TREE_DATA; acc = acc || [];
   (node.children || []).forEach(c => {
@@ -4244,7 +4314,7 @@ function makeViewPanelDraggable(panelEl, headEl){
   let startX = 0, startY = 0, startTop = 0, startLeft = 0;
 
   function onPointerDown(ev){
-    if (ev.target.closest('.mt-back') || ev.target.closest('#vpx')) return;
+    if (ev.target.closest('.mt-back') || ev.target.closest('#vpx') || ev.target.closest('.mt-sibling-nav')) return;
     dragging = true;
     const rect = panelEl.getBoundingClientRect();
     startX = ev.clientX; startY = ev.clientY;
@@ -4322,7 +4392,16 @@ function openView(nodeId, history){
   const backBtnHtml = history.length
     ? '<button class="mt-back" id="vpback" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>'
     : '';
-  panel.innerHTML = \`<div class="mt-view-panel" id="vp-inner"><div class="mt-modal-head mt-draggable-head"><div class="mt-modal-head-left">\${backBtnHtml}<span>\${escapeHtml(node.name||'Sem título')}</span></div><button class="mt-x" id="vpx">&times;</button></div><div class="mt-modal-body">\${node.text?'<p class="mt-view-text">'+escapeHtml(node.text)+'</p>':'<p class="mt-view-text mt-faint">Sem descrição.</p>'}\${childrenSectionHtml}</div></div>\`;
+  // indicadores de irmão (↑ acessa o de cima, ↓ acessa o de baixo) — só
+  // aparecem quando existe o irmão correspondente naquela direção
+  const siblingNav = getSiblingNav(nodeId);
+  const siblingNavHtml = (siblingNav.prevId || siblingNav.nextId) ? \`
+    <div class="mt-sibling-nav-group">
+      \${siblingNav.prevId ? '<button class="mt-sibling-nav" id="vpsibprev" title="Irmão anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg></button>' : ''}
+      \${siblingNav.nextId ? '<button class="mt-sibling-nav" id="vpsibnext" title="Próximo irmão"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></button>' : ''}
+    </div>
+  \` : '';
+  panel.innerHTML = \`<div class="mt-view-panel" id="vp-inner"><div class="mt-modal-head mt-draggable-head"><div class="mt-modal-head-left">\${backBtnHtml}<span>\${escapeHtml(node.name||'Sem título')}</span></div>\${siblingNavHtml}<button class="mt-x" id="vpx">&times;</button></div><div class="mt-modal-body">\${node.text?'<p class="mt-view-text">'+escapeHtml(node.text)+'</p>':'<p class="mt-view-text mt-faint">Sem descrição.</p>'}\${childrenSectionHtml}</div></div>\`;
   document.body.appendChild(panel);
 
   const panelInner = panel.querySelector('#vp-inner');
@@ -4352,6 +4431,17 @@ function openView(nodeId, history){
       panel.remove();
       if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
       viewPanelNavTimer = setTimeout(() => openView(prevId, newHistory), NAV_DELAY_MS);
+      return;
+    }
+    const sibPrevBtn = ev.target.closest('#vpsibprev');
+    const sibNextBtn = ev.target.closest('#vpsibnext');
+    if (sibPrevBtn || sibNextBtn) {
+      const nav = getSiblingNav(nodeId);
+      const targetId = sibPrevBtn ? nav.prevId : nav.nextId;
+      if (!targetId) return;
+      panel.remove();
+      if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+      viewPanelNavTimer = setTimeout(() => openView(targetId, history), NAV_DELAY_MS);
       return;
     }
     const row = ev.target.closest('.mt-child-row');
