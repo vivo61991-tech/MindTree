@@ -492,6 +492,9 @@
     pointer-events:none;
     dominant-baseline:central;
   }
+  .capsule-label-marker{
+    font-size:8px;
+  }
   .link-path{
     fill:none;
     stroke-width:2;
@@ -640,8 +643,15 @@
   .mt-btn.danger:hover{background:rgba(226,85,79,.12);}
 
   /* ===== PAINEL DE VISUALIZAÇÃO ===== */
-  .mt-view-overlay{align-items:center;}
+  /* sem desfoque no fundo (diferente do modal de edição) — assim dá pra
+     acompanhar o movimento/animação da árvore enquanto se navega pela
+     descrição, sem o fluxo ficar borrado atrás do painel. Também não
+     bloqueia cliques: a área fora do painel deixa o clique passar direto
+     pra árvore (assim dá pra clicar em outro título com a descrição já
+     aberta e ela atualiza pra esse nó), só o painel em si captura cliques. */
+  .mt-view-overlay{align-items:center;backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,11,14,.12);pointer-events:none;}
   .mt-view-panel{
+    pointer-events:auto;
     width:100%;max-width:460px;max-height:80vh;
     background:color-mix(in srgb, var(--panel) 55%, transparent);
     backdrop-filter:blur(14px);
@@ -1865,8 +1875,13 @@ const Renderer = (() => {
     const sourceW = d.source._w || MIN_CAPSULE_W;
     const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
     const tx = d.target.y, ty = d.target.x;
-    const style = AppState.lineStyle;
+    return linkPathFromPoints(AppState.lineStyle, sx, sy, tx, ty);
+  }
 
+  // gera o "d" de um link a partir de pontos de origem/destino quaisquer —
+  // usada tanto pelo estado final (linkPathGen) quanto, frame a frame,
+  // pela animação (linkAttrTween) abaixo.
+  function linkPathFromPoints(style, sx, sy, tx, ty){
     if (style === 'straight') {
       // cotovelo em ângulo reto: horizontal -> vertical -> horizontal
       const mx = (sx + tx) / 2;
@@ -1911,6 +1926,33 @@ const Renderer = (() => {
   const ANIM_MS = 380;
   const ANIM_EASE = d3.easeCubicInOut;
 
+  // Anima um link interpolando as COORDENADAS NUMÉRICAS (sx,sy,tx,ty) frame
+  // a frame, e reconstruindo o path com a fórmula de cada estilo a cada
+  // frame — em vez de deixar o D3 interpolar a STRING do atributo "d"
+  // diretamente. Isso é necessário porque reto/arredondado/ortogonal podem
+  // gerar números diferentes de comandos SVG (H/V/A) dependendo do desnível
+  // entre os nós; ao interpolar texto entre dois "d"s com estruturas
+  // diferentes o navegador não consegue casar os comandos e pula direto pro
+  // resultado final, causando o efeito de "estouro"/zigue-zague relatado no
+  // recolher e expandir de nós. Interpolando os PONTOS (sempre números
+  // simples) e regerando a fórmula a cada frame, o path final está sempre
+  // bem-formado e a transição fica sempre suave — em qualquer estilo.
+  // cada elemento <path> guarda os últimos pontos usados em "__linkPts",
+  // pra servir de ponto de partida real na próxima transição (em vez de
+  // tentar reconstruir isso a partir do texto do atributo "d").
+  function linkAttrTween(el, toSx, toSy, toTx, toTy){
+    const style = AppState.lineStyle;
+    const from = el.__linkPts || { sx: toSx, sy: toSy, tx: toSx, ty: toSy };
+    const ix = d3.interpolateNumber(from.sx, toSx);
+    const iy = d3.interpolateNumber(from.sy, toSy);
+    const itx = d3.interpolateNumber(from.tx, toTx);
+    const ity = d3.interpolateNumber(from.ty, toTy);
+    el.__linkPts = { sx: toSx, sy: toSy, tx: toTx, ty: toTy };
+    return function(t){
+      return linkPathFromPoints(style, ix(t), iy(t), itx(t), ity(t));
+    };
+  }
+
   function renderLinks(root){
     const links = root.links();
     let g = zoomLayer.select('g.links-layer');
@@ -1920,13 +1962,14 @@ const Renderer = (() => {
       .data(links, d => d.target.data.id);
 
     // saída: encolhe o traço até o ponto de origem (pai) antes de sumir,
-    // numa única transição suave
+    // interpolando coordenadas (não a string do path) para qualquer estilo
     sel.exit()
       .transition().duration(ANIM_MS).ease(ANIM_EASE)
-      .attr('d', d => {
+      .attrTween('d', function(d){
         const sourceW = d.source._w || MIN_CAPSULE_W;
         const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
-        return `M${sx},${sy} C${sx},${sy} ${sx},${sy} ${sx},${sy}`;
+        // encolhe até virar um ponto único grudado no pai
+        return linkAttrTween(this, sx, sy, sx, sy);
       })
       .remove();
 
@@ -1934,17 +1977,28 @@ const Renderer = (() => {
       .append('path')
       .attr('class', 'link-path')
       .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
-      .attr('d', d => {
-        // nasce "grudado" na origem (pai), sem comprimento ainda
+      .attr('d', function(d){
+        // nasce "grudado" na origem (pai), sem comprimento ainda — e já
+        // registra esse ponto como ponto de partida pra próxima transição
         const sourceW = d.source._w || MIN_CAPSULE_W;
         const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
-        return `M${sx},${sy} C${sx},${sy} ${sx},${sy} ${sx},${sy}`;
+        this.__linkPts = { sx, sy, tx: sx, ty: sy };
+        return linkPathFromPoints(AppState.lineStyle, sx, sy, sx, sy);
       });
 
     enter.merge(sel)
       .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
       .transition().duration(ANIM_MS).ease(ANIM_EASE)
-      .attr('d', linkPathGen);
+      .attrTween('d', function(d){
+        // parte de onde o link estava de verdade (registrado em
+        // __linkPts — seja a posição anterior real, seja o ponto de
+        // nascimento grudado no pai, no caso de um link novo) e vai suave
+        // até a posição/desenho final correspondente ao layout atual
+        const sourceW = d.source._w || MIN_CAPSULE_W;
+        const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+        const tx = d.target.y, ty = d.target.x;
+        return linkAttrTween(this, sx, sy, tx, ty);
+      });
   }
 
   function renderNodes(root){
@@ -2047,13 +2101,21 @@ const Renderer = (() => {
       .attr('rx', capRadius)
       .attr('fill', color.fill);
 
-    capsuleGroup.append('text')
+    const labelText = capsuleGroup.append('text')
       .attr('class', 'capsule-label')
       .attr('x', w / 2)
       .attr('y', capH / 2)
       .attr('text-anchor', 'middle')
-      .attr('fill', color.text)
-      .text((node.id === AppState.viewPanelNodeId ? '◆ ' : '') + truncate(node.name || 'Sem título', 50));
+      .attr('fill', color.text);
+
+    if (node.id === AppState.viewPanelNodeId) {
+      // o losango fica bem menor que o texto do título — só um indicador
+      // discreto, não um caractere do mesmo tamanho do nome
+      labelText.append('tspan')
+        .attr('class', 'capsule-label-marker')
+        .text('◆ ');
+    }
+    labelText.append('tspan').text(truncate(node.name || 'Sem título', 50));
 
     // ---- linha curta conectando cápsula ao círculo (nó) ----
     const circleX = w + CAPSULE_GAP + CIRCLE_R;
@@ -2348,6 +2410,10 @@ const NodeInteraction = (() => {
   // só passa a valer depois que o usuário arrasta ao menos uma vez — até
   // lá, o painel continua centralizando normalmente a cada navegação.
   let viewPanelPos = null;
+  // timer pendente de reabertura do painel após navegar (back/filho) — se o
+  // usuário navegar de novo antes do atraso terminar, cancela o anterior
+  // pra não abrir painéis fora de ordem
+  let viewPanelNavTimer = null;
 
   function makeDraggable(panelEl, headEl){
     let dragging = false;
@@ -2403,8 +2469,23 @@ const NodeInteraction = (() => {
     const node = TreeModel.findNode(nodeId);
     if (!node) return;
 
+    // cancela qualquer reabertura adiada pendente — evita que um clique
+    // direto na árvore (que chama openViewPanel imediatamente) acabe
+    // sendo sobrescrito por uma navegação anterior que ainda não terminou
+    if (viewPanelNavTimer) {
+      clearTimeout(viewPanelNavTimer);
+      viewPanelNavTimer = null;
+    }
+
     let panel = document.getElementById('mt-view-panel');
     if (panel) panel.remove();
+
+    // se o nó cujo título está sendo exibido na descrição estiver fechado
+    // (recolhido) na árvore, abre ele agora — assim a árvore sempre mostra
+    // os filhos do nó que está sendo navegado na tela de descrição
+    if (node.collapsed) {
+      TreeModel.updateNode(nodeId, { collapsed: false });
+    }
 
     // marca este nó como "tela de descrição aberta" — a cápsula dele na
     // árvore recebe o prefixo ◆ enquanto o painel estiver aberto/navegando
@@ -2415,18 +2496,21 @@ const NodeInteraction = (() => {
     panel.id = 'mt-view-panel';
     panel.className = 'mt-overlay mt-view-overlay';
 
-    const childrenHtml = node.children.length
-      ? node.children.map(c => `
-          <div class="mt-child-row" data-child-id="${c.id}">
-            <div class="mt-child-main">
-              <div class="mt-child-name">${escapeHtml(c.name || '(sem nome)')}</div>
-              ${c.text ? `<div class="mt-child-text">${escapeHtml(truncate(c.text, 80))}</div>` : ''}
+    const childrenSectionHtml = node.children.length
+      ? `
+          <div class="mt-children-title">Destinos (${node.children.length})</div>
+          <div class="mt-children-list">${node.children.map(c => `
+            <div class="mt-child-row" data-child-id="${c.id}">
+              <div class="mt-child-main">
+                <div class="mt-child-name">${escapeHtml(c.name || '(sem nome)')}</div>
+                ${c.text ? `<div class="mt-child-text">${escapeHtml(truncate(c.text, 80))}</div>` : ''}
+              </div>
+              ${c.children.length ? `<span class="mt-child-count">${c.children.length}</span>` : ''}
+              <svg class="mt-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
             </div>
-            ${c.children.length ? `<span class="mt-child-count">${c.children.length}</span>` : ''}
-            <svg class="mt-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
-          </div>
-        `).join('')
-      : '<div class="mt-empty-children">Este nó não tem destinos.</div>';
+          `).join('')}</div>
+        `
+      : '';
 
     const backBtnHtml = history.length
       ? `<button class="mt-back" data-action="back" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>`
@@ -2443,8 +2527,7 @@ const NodeInteraction = (() => {
         </div>
         <div class="mt-modal-body">
           ${node.text ? `<p class="mt-view-text">${escapeHtml(node.text)}</p>` : '<p class="mt-view-text mt-faint">Sem descrição.</p>'}
-          <div class="mt-children-title">Destinos (${node.children.length})</div>
-          <div class="mt-children-list">${childrenHtml}</div>
+          ${childrenSectionHtml}
         </div>
       </div>
     `;
@@ -2464,6 +2547,14 @@ const NodeInteraction = (() => {
 
     makeDraggable(panelInner, headEl);
 
+    // pequeno atraso antes de reabrir o painel de descrição em outro nó:
+    // sem isso, o painel reaparece instantaneamente por cima da árvore e
+    // cobre a animação de câmera+expansão (450ms), dando a impressão de
+    // que o avanço "acontece escondido" atrás do painel. Esperando a
+    // animação terminar, dá pra acompanhar o movimento antes da descrição
+    // do próximo nó aparecer.
+    const NAV_DELAY_MS = 460;
+
     panel.addEventListener('click', (ev) => {
       const backBtn = ev.target.closest('[data-action="back"]');
       if (backBtn) {
@@ -2474,7 +2565,8 @@ const NodeInteraction = (() => {
         Renderer.render();
         const prevParentId = TreeModel.findParent(prevId)?.id;
         Renderer.focusOn(prevParentId ? [prevParentId, prevId] : [prevId]);
-        openViewPanel(prevId, newHistory);
+        if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+        viewPanelNavTimer = setTimeout(() => openViewPanel(prevId, newHistory), NAV_DELAY_MS);
         return;
       }
       const childRow = ev.target.closest('.mt-child-row');
@@ -2484,7 +2576,8 @@ const NodeInteraction = (() => {
         AppState.focusedNodeId = childId;
         Renderer.render();
         Renderer.focusOn([nodeId, childId]);
-        openViewPanel(childId, [...history, nodeId]);
+        if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+        viewPanelNavTimer = setTimeout(() => openViewPanel(childId, [...history, nodeId]), NAV_DELAY_MS);
         return;
       }
       if (ev.target === panel || ev.target.dataset.action === 'close') {
@@ -2493,6 +2586,7 @@ const NodeInteraction = (() => {
         // e esquece a posição arrastada — a próxima abertura volta ao centro
         AppState.viewPanelNodeId = null;
         viewPanelPos = null;
+        if (viewPanelNavTimer) { clearTimeout(viewPanelNavTimer); viewPanelNavTimer = null; }
         Renderer.render();
       }
     });
@@ -3427,9 +3521,10 @@ const ImportExport = (() => {
   .circle-glyph{stroke:var(--panel);stroke-width:1.6;stroke-linecap:round;pointer-events:none;}
   .tree-capsule{cursor:pointer;}
   .capsule-label{font-size:13px;font-weight:600;pointer-events:none;dominant-baseline:central;text-anchor:middle;}
+  .capsule-label-marker{font-size:8px;}
   .link-path{fill:none;stroke-width:2;}
-  .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.25);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
-  .mt-view-panel{width:100%;max-width:460px;max-height:80vh;background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.12);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;pointer-events:none;}
+  .mt-view-panel{pointer-events:auto;width:100%;max-width:460px;max-height:80vh;background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;}
   .mt-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;gap:10px;}
   .mt-draggable-head{cursor:grab;touch-action:none;user-select:none;}
   .mt-draggable-head:active{cursor:grabbing;}
@@ -3625,6 +3720,7 @@ let lastLayoutRoot = null;
 let viewPanelNodeId = null; // id do nó cuja tela de descrição está aberta — mostra ◆ na cápsula dele
 let viewPanelPos = null; // posição (top/left/width) escolhida ao arrastar o painel pelo cabeçalho;
                           // só passa a valer depois do primeiro arrasto, e é resetada ao fechar o painel
+let viewPanelNavTimer = null; // timer pendente de reabertura do painel após navegar (back/filho)
 function computeLayout(){
   const root = buildHierarchy();
   const layout = d3.tree().nodeSize([ROW_H, 0]);
@@ -3641,15 +3737,12 @@ function computeLayout(){
   root.each(d=>{ d.x+=offsetX; d.y+=PADDING; });
   return root;
 }
-function linkPathGen(d){
-  const sourceW = d.source._w || MIN_CAPSULE_W;
-  const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
-  const tx = d.target.y, ty = d.target.x;
-  if (LINE_STYLE === 'straight') {
+function linkPathFromPoints(style, sx, sy, tx, ty){
+  if (style === 'straight') {
     const mx = (sx + tx) / 2;
     return \`M\${sx},\${sy} H\${mx} V\${ty} H\${tx}\`;
   }
-  if (LINE_STYLE === 'rounded') {
+  if (style === 'rounded') {
     const mx = (sx + tx) / 2;
     const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(mx - sx) / 2, Math.abs(tx - mx) / 2);
     if (r < 1 || sy === ty) return \`M\${sx},\${sy} H\${tx}\`;
@@ -3658,7 +3751,7 @@ function linkPathGen(d){
     const sweep2 = goingDown ? 0 : 1;
     return \`M\${sx},\${sy} H\${mx - r} A\${r},\${r} 0 0 \${sweep1} \${mx},\${sy + (goingDown ? r : -r)} V\${ty - (goingDown ? r : -r)} A\${r},\${r} 0 0 \${sweep2} \${mx + r},\${ty} H\${tx}\`;
   }
-  if (LINE_STYLE === 'orthogonal') {
+  if (style === 'orthogonal') {
     const mx = (sx + tx) / 2;
     const r = Math.min(14, Math.abs(ty - sy) / 2, Math.abs(tx - mx) / 2);
     if (r < 1 || sy === ty) return \`M\${sx},\${sy} H\${tx}\`;
@@ -3668,6 +3761,31 @@ function linkPathGen(d){
   }
   const mx = (sx + tx) / 2;
   return \`M\${sx},\${sy} C\${mx},\${sy} \${mx},\${ty} \${tx},\${ty}\`;
+}
+function linkPathGen(d){
+  const sourceW = d.source._w || MIN_CAPSULE_W;
+  const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+  const tx = d.target.y, ty = d.target.x;
+  return linkPathFromPoints(LINE_STYLE, sx, sy, tx, ty);
+}
+// Anima um link interpolando as COORDENADAS NUMÉRICAS (sx,sy,tx,ty) frame a
+// frame e reconstruindo o path a cada frame — evita o estouro/zigue-zague
+// que ocorria ao deixar o D3 interpolar a STRING do "d" diretamente entre
+// dois estilos com número de comandos SVG diferentes (reto/arredondado/
+// ortogonal podem variar H/V/A conforme o desnível entre os nós). Cada
+// elemento <path> guarda seus últimos pontos reais em "__linkPts" pra usar
+// como ponto de partida verdadeiro na próxima transição.
+function linkAttrTween(el, toSx, toSy, toTx, toTy){
+  const style = LINE_STYLE;
+  const from = el.__linkPts || { sx: toSx, sy: toSy, tx: toSx, ty: toSy };
+  const ix = d3.interpolateNumber(from.sx, toSx);
+  const iy = d3.interpolateNumber(from.sy, toSy);
+  const itx = d3.interpolateNumber(from.tx, toTx);
+  const ity = d3.interpolateNumber(from.ty, toTy);
+  el.__linkPts = { sx: toSx, sy: toSy, tx: toTx, ty: toTy };
+  return function(t){
+    return linkPathFromPoints(style, ix(t), iy(t), itx(t), ity(t));
+  };
 }
 const ANIM_MS = 380;
 const ANIM_EASE = d3.easeCubicInOut;
@@ -3703,23 +3821,29 @@ function render(){
   const linkSel = lg.selectAll('path').data(root.links(), d => d.target.data.id);
   linkSel.exit()
     .transition().duration(ANIM_MS).ease(ANIM_EASE)
-    .attr('d', d => {
+    .attrTween('d', function(d){
       const sourceW = d.source._w || MIN_CAPSULE_W;
       const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
-      return \`M\${sx},\${sy} C\${sx},\${sy} \${sx},\${sy} \${sx},\${sy}\`;
+      return linkAttrTween(this, sx, sy, sx, sy);
     })
     .remove();
   const linkEnter = linkSel.enter().append('path').attr('class','link-path')
     .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
-    .attr('d', d => {
+    .attr('d', function(d){
       const sourceW = d.source._w || MIN_CAPSULE_W;
       const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
-      return \`M\${sx},\${sy} C\${sx},\${sy} \${sx},\${sy} \${sx},\${sy}\`;
+      this.__linkPts = { sx, sy, tx: sx, ty: sy };
+      return linkPathFromPoints(LINE_STYLE, sx, sy, sx, sy);
     });
   linkEnter.merge(linkSel)
     .attr('stroke', d => colorByIndex(d.source._colorIdx).fill)
     .transition().duration(ANIM_MS).ease(ANIM_EASE)
-    .attr('d', linkPathGen);
+    .attrTween('d', function(d){
+      const sourceW = d.source._w || MIN_CAPSULE_W;
+      const sx = d.source.y + sourceW + CAPSULE_GAP + CIRCLE_R * 2, sy = d.source.x;
+      const tx = d.target.y, ty = d.target.x;
+      return linkAttrTween(this, sx, sy, tx, ty);
+    });
 
   let ng = zoomLayer.select('g.nodes'); if (ng.empty()) ng = zoomLayer.append('g').attr('class','nodes');
   const sel = ng.selectAll('g.nw').data(root.descendants(), d=>d.data.id);
@@ -3756,8 +3880,9 @@ function render(){
       .attr('transform', \`translate(0, \${-capH/2})\`)
       .on('click', () => openView(d.data.id));
     capGrp.append('rect').attr('width',w).attr('height',capH).attr('rx',capRadius).attr('fill',color.fill);
-    capGrp.append('text').attr('class','capsule-label').attr('x',w/2).attr('y',capH/2)
-      .attr('fill',color.text).text((d.data.id===viewPanelNodeId?'◆ ':'')+truncate(d.data.name||'Sem título',50));
+    const labelText = capGrp.append('text').attr('class','capsule-label').attr('x',w/2).attr('y',capH/2).attr('fill',color.text);
+    if (d.data.id===viewPanelNodeId) labelText.append('tspan').attr('class','capsule-label-marker').text('◆ ');
+    labelText.append('tspan').text(truncate(d.data.name||'Sem título',50));
 
     const circleX = w + CAPSULE_GAP + CIRCLE_R;
     g.append('line').attr('x1',w).attr('y1',0).attr('x2',circleX-CIRCLE_R).attr('y2',0)
@@ -3932,6 +4057,19 @@ function openView(nodeId, history){
   const node = findNode(nodeId); if(!node) return;
   let panel = document.getElementById('vp'); if (panel) panel.remove();
 
+  // cancela qualquer reabertura adiada pendente — evita que um clique
+  // direto na árvore acabe sendo sobrescrito por uma navegação anterior
+  // que ainda não terminou
+  if (viewPanelNavTimer) {
+    clearTimeout(viewPanelNavTimer);
+    viewPanelNavTimer = null;
+  }
+
+  // se o nó cujo título está sendo exibido na descrição estiver fechado
+  // (recolhido) na árvore, abre ele agora — assim a árvore sempre mostra
+  // os filhos do nó que está sendo navegado na tela de descrição
+  if (node.collapsed) node.collapsed = false;
+
   // marca este nó como "tela de descrição aberta" — a cápsula dele na
   // árvore recebe o prefixo ◆ enquanto o painel estiver aberto/navegando
   viewPanelNodeId = nodeId;
@@ -3966,23 +4104,36 @@ function openView(nodeId, history){
 
   makeViewPanelDraggable(panelInner, headEl);
 
+  // pequeno atraso antes de reabrir o painel em outro nó: sem isso, ele
+  // reaparece instantaneamente por cima da árvore e cobre a animação de
+  // expansão (ANIM_MS), escondendo o movimento. Esperando terminar, dá
+  // pra acompanhar a árvore se ajustando antes do painel cobrir de novo.
+  const NAV_DELAY_MS = ANIM_MS + 80;
+
   panel.addEventListener('click', ev => {
     const backBtn = ev.target.closest('#vpback');
     if (backBtn) {
       const prevId = history[history.length - 1];
       const newHistory = history.slice(0, -1);
       panel.remove();
-      openView(prevId, newHistory);
+      if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+      viewPanelNavTimer = setTimeout(() => openView(prevId, newHistory), NAV_DELAY_MS);
       return;
     }
     const row = ev.target.closest('.mt-child-row');
-    if (row) { panel.remove(); openView(row.dataset.id, [...history, nodeId]); return; }
+    if (row) {
+      panel.remove();
+      if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
+      viewPanelNavTimer = setTimeout(() => openView(row.dataset.id, [...history, nodeId]), NAV_DELAY_MS);
+      return;
+    }
     if (ev.target===panel || ev.target.id==='vpx') {
       panel.remove();
       // fechou de vez (sem ir pra outro nó): limpa a marcação ◆ na árvore
       // e esquece a posição arrastada — a próxima abertura volta ao centro
       viewPanelNodeId = null;
       viewPanelPos = null;
+      if (viewPanelNavTimer) { clearTimeout(viewPanelNavTimer); viewPanelNavTimer = null; }
       render();
     }
   });
