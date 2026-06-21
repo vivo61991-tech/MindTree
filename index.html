@@ -38,6 +38,7 @@
     --shadow:0 4px 20px rgba(0,0,0,.35);
     --topbar-h:56px;
     --dot-color:#33343d;
+    --btn-text-on-color:#000000;
   }
   @media (prefers-color-scheme: light){
     :root{
@@ -56,6 +57,7 @@
       --success:#27915f;
       --shadow:0 4px 20px rgba(20,20,30,.12);
       --dot-color:#d7d9de;
+      --btn-text-on-color:#ffffff;
     }
   }
   html[data-theme="dark"]{
@@ -63,12 +65,14 @@
     --border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;
     --text-faint:#6b6c75;--accent:#5b8def;--accent-2:#4a7adb;--danger:#e2554f;
     --success:#3fb37f;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;
+    --btn-text-on-color:#000000;
   }
   html[data-theme="light"]{
     --bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;
     --border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;
     --text-faint:#8b8e96;--accent:#3b6fd9;--accent-2:#2f5cc0;--danger:#d23b35;
     --success:#27915f;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;
+    --btn-text-on-color:#ffffff;
   }
   *{box-sizing:border-box;}
   html,body{
@@ -114,7 +118,7 @@
     transition:background .15s,border-color .15s;
     white-space:nowrap;
   }
-  .tb-btn:hover{background:#33343c;border-color:#52535d;}
+  .tb-btn:hover{background:color-mix(in srgb, var(--panel-2) 80%, var(--text) 20%);border-color:var(--border-light);}
   .tb-btn:active{transform:translateY(1px);}
   .tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .tb-btn.primary:hover{background:var(--accent-2);}
@@ -636,11 +640,43 @@
     background:var(--panel-2);color:var(--text);
     font-size:13px;font-weight:500;cursor:pointer;
   }
-  .mt-btn:hover{background:#33343c;}
+  .mt-btn:hover{background:color-mix(in srgb, var(--panel-2) 80%, var(--text) 20%);}
   .mt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .mt-btn.primary:hover{background:var(--accent-2);}
   .mt-btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
   .mt-btn.danger:hover{background:rgba(226,85,79,.12);}
+  .mt-btn.confirm{
+    background:color-mix(in srgb, #86b528 92%, transparent);
+    border:none;color:var(--btn-text-on-color);border-radius:999px;
+    padding:0 20px;
+    display:flex;align-items:center;gap:7px;
+  }
+  .mt-btn.confirm:hover{background:color-mix(in srgb, #86b528 100%, transparent);}
+  .mt-btn.cancel{
+    background:color-mix(in srgb, #ff9901 92%, transparent);
+    border:none;color:var(--btn-text-on-color);border-radius:999px;
+    padding:0 20px;
+    display:flex;align-items:center;gap:7px;
+  }
+  .mt-btn.cancel:hover{background:color-mix(in srgb, #ff9901 100%, transparent);}
+  .mt-btn-icon{font-size:13px;line-height:1;color:var(--btn-text-on-color);}
+
+  /* ===== CAIXA DE DIÁLOGO PRÓPRIA (confirm/alert/prompt) =====
+     são mensagens importantes (confirmações, erros) — diferente dos
+     outros modais do app, ficam praticamente opacas, com o mínimo de
+     transparência possível, pra garantir leitura clara. */
+  .mt-dialog{
+    width:100%;max-width:380px;
+    background:color-mix(in srgb, var(--panel) 97%, transparent);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+  }
+  .mt-dialog .mt-modal-body{gap:10px;}
+  .mt-dialog-message{font-size:14px;line-height:1.5;color:var(--text-dim);margin:0;white-space:pre-line;}
+  .mt-dialog-foot{
+    display:flex;align-items:center;justify-content:flex-end;gap:8px;
+    padding:12px 16px;border-top:1px solid var(--border);
+  }
 
   /* ===== PAINEL DE VISUALIZAÇÃO ===== */
   /* sem desfoque no fundo (diferente do modal de edição) — assim dá pra
@@ -683,7 +719,7 @@
     transition:border-color .15s,background .15s;
     max-width:100%;
   }
-  .mt-child-row:hover{border-color:var(--accent);background:#2c2d35;}
+  .mt-child-row:hover{border-color:var(--accent);background:color-mix(in srgb, var(--panel-2) 85%, var(--text) 15%);}
   .mt-child-main{flex:1 1 0%;min-width:0;overflow:hidden;}
   .mt-child-name{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .mt-child-text{
@@ -876,7 +912,7 @@
     cursor:pointer;
     transition:border-color .15s,background .15s;
   }
-  .project-row:hover{border-color:var(--accent);background:#2c2d35;}
+  .project-row:hover{border-color:var(--accent);background:color-mix(in srgb, var(--panel-2) 85%, var(--text) 15%);}
   .project-row.current{border-color:var(--accent);background:rgba(91,141,239,.08);}
   .project-row-main{flex:1;min-width:0;}
   .project-row-name{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2289,6 +2325,155 @@ const Renderer = (() => {
 })();
 
 /* =========================================================
+   CAIXAS DE DIÁLOGO PRÓPRIAS (substituem confirm/alert/prompt nativos)
+   — sempre estilizadas conforme o tema atual, com título da ação e
+   botões "Confirmar" (verde, ✔) / "Cancelar" (vermelho, ✖).
+   Todas retornam uma Promise, como seus equivalentes nativos em essência:
+   Dialog.confirm(title, message) -> Promise<boolean>
+   Dialog.alert(title, message)   -> Promise<void>
+   Dialog.prompt(title, message, defaultValue) -> Promise<string|null>
+   ========================================================= */
+const Dialog = (() => {
+  function escapeHtml(str){
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function escapeAttr(str){
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function buildOverlay(){
+    const overlay = document.createElement('div');
+    overlay.className = 'mt-overlay';
+    return overlay;
+  }
+
+  function confirm(title, message){
+    return new Promise((resolve) => {
+      const overlay = buildOverlay();
+      overlay.innerHTML = `
+        <div class="mt-modal mt-dialog">
+          <div class="mt-modal-head">
+            <span>${escapeHtml(title)}</span>
+            <button class="mt-x" data-action="close">&times;</button>
+          </div>
+          <div class="mt-modal-body">
+            <p class="mt-dialog-message">${escapeHtml(message)}</p>
+          </div>
+          <div class="mt-dialog-foot">
+            <button class="mt-btn cancel" data-action="cancel"><span class="mt-btn-icon">✖</span> Cancelar</button>
+            <button class="mt-btn confirm" data-action="confirm"><span class="mt-btn-icon">✔</span> Confirmar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      function finish(result){
+        overlay.remove();
+        document.removeEventListener('keydown', onKeydown);
+        resolve(result);
+      }
+      function onKeydown(ev){
+        if (ev.key === 'Escape') finish(false);
+        if (ev.key === 'Enter') finish(true);
+      }
+      overlay.addEventListener('click', (ev) => {
+        const action = ev.target.closest('[data-action]')?.dataset.action;
+        if (ev.target === overlay || action === 'cancel' || action === 'close') finish(false);
+        else if (action === 'confirm') finish(true);
+      });
+      document.addEventListener('keydown', onKeydown);
+      overlay.querySelector('[data-action="confirm"]').focus();
+    });
+  }
+
+  function alert(title, message){
+    return new Promise((resolve) => {
+      const overlay = buildOverlay();
+      overlay.innerHTML = `
+        <div class="mt-modal mt-dialog">
+          <div class="mt-modal-head">
+            <span>${escapeHtml(title)}</span>
+            <button class="mt-x" data-action="close">&times;</button>
+          </div>
+          <div class="mt-modal-body">
+            <p class="mt-dialog-message">${escapeHtml(message)}</p>
+          </div>
+          <div class="mt-dialog-foot">
+            <button class="mt-btn confirm" data-action="confirm"><span class="mt-btn-icon">✔</span> Confirmar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      function finish(){
+        overlay.remove();
+        document.removeEventListener('keydown', onKeydown);
+        resolve();
+      }
+      function onKeydown(ev){
+        if (ev.key === 'Escape' || ev.key === 'Enter') finish();
+      }
+      overlay.addEventListener('click', (ev) => {
+        const action = ev.target.closest('[data-action]')?.dataset.action;
+        if (ev.target === overlay || action === 'confirm' || action === 'close') finish();
+      });
+      document.addEventListener('keydown', onKeydown);
+      overlay.querySelector('[data-action="confirm"]').focus();
+    });
+  }
+
+  function prompt(title, message, defaultValue){
+    return new Promise((resolve) => {
+      const overlay = buildOverlay();
+      overlay.innerHTML = `
+        <div class="mt-modal mt-dialog">
+          <div class="mt-modal-head">
+            <span>${escapeHtml(title)}</span>
+            <button class="mt-x" data-action="close">&times;</button>
+          </div>
+          <div class="mt-modal-body">
+            ${message ? `<p class="mt-dialog-message">${escapeHtml(message)}</p>` : ''}
+            <input type="text" class="mt-input" id="mt-dialog-input" value="${escapeAttr(defaultValue || '')}" />
+          </div>
+          <div class="mt-dialog-foot">
+            <button class="mt-btn cancel" data-action="cancel"><span class="mt-btn-icon">✖</span> Cancelar</button>
+            <button class="mt-btn confirm" data-action="confirm"><span class="mt-btn-icon">✔</span> Confirmar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const input = overlay.querySelector('#mt-dialog-input');
+
+      function finish(result){
+        overlay.remove();
+        document.removeEventListener('keydown', onKeydown);
+        resolve(result);
+      }
+      function onKeydown(ev){
+        if (ev.key === 'Escape') finish(null);
+        if (ev.key === 'Enter') finish(input.value);
+      }
+      overlay.addEventListener('click', (ev) => {
+        const action = ev.target.closest('[data-action]')?.dataset.action;
+        if (ev.target === overlay || action === 'cancel' || action === 'close') finish(null);
+        else if (action === 'confirm') finish(input.value);
+      });
+      document.addEventListener('keydown', onKeydown);
+      input.focus();
+      input.select();
+    });
+  }
+
+  return { confirm, alert, prompt };
+})();
+
+/* =========================================================
    INTERAÇÃO COM NÓS (cliques, criação, edição, visualização)
    ========================================================= */
 const NodeInteraction = (() => {
@@ -2386,13 +2571,15 @@ const NodeInteraction = (() => {
       } else if (action === 'save') {
         save();
       } else if (action === 'delete') {
-        if (confirm('Excluir este nó e todos os seus destinos?')) {
-          TreeModel.removeNode(nodeId);
-          AppState.focusedNodeId = null;
-          close();
-          Renderer.render();
-          SheetPanel.refresh();
-        }
+        Dialog.confirm('Excluir nó', 'Excluir este nó e todos os seus destinos?').then((ok) => {
+          if (ok) {
+            TreeModel.removeNode(nodeId);
+            AppState.focusedNodeId = null;
+            close();
+            Renderer.render();
+            SheetPanel.refresh();
+          }
+        });
       }
     });
 
@@ -2797,7 +2984,7 @@ const ProjectManager = (() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
       return true;
     } catch (e) {
-      alert('Não foi possível salvar: armazenamento local indisponível ou cheio.');
+      Dialog.alert('Erro ao salvar', 'Não foi possível salvar: armazenamento local indisponível ou cheio.');
       return false;
     }
   }
@@ -2838,13 +3025,13 @@ const ProjectManager = (() => {
     };
   }
 
-  function saveAsNew(forcedName){
+  async function saveAsNew(forcedName){
     const defaultName = pendingProjectName || getCurrentProjectName() || TreeModel.getRoot().name || 'Projeto sem nome';
     let trimmed;
     if (forcedName !== undefined) {
       trimmed = forcedName;
     } else {
-      const name = prompt('Nome do projeto:', defaultName);
+      const name = await Dialog.prompt('Salvar projeto', 'Nome do projeto:', defaultName);
       if (name === null) return; // cancelado
       trimmed = name.trim() || defaultName;
     }
@@ -2950,11 +3137,11 @@ const ProjectManager = (() => {
     close();
   }
 
-  function renameProject(id){
+  async function renameProject(id){
     const projects = loadAll();
     const entry = projects.find(p => p.id === id);
     if (!entry) return;
-    const name = prompt('Novo nome do projeto:', entry.name);
+    const name = await Dialog.prompt('Renomear projeto', 'Novo nome do projeto:', entry.name);
     if (name === null) return;
     entry.name = name.trim() || entry.name;
     saveAll(projects);
@@ -2962,15 +3149,34 @@ const ProjectManager = (() => {
     if (id === currentProjectId) ProjectNameBar.refresh();
   }
 
-  function deleteProject(id){
+  async function deleteProject(id){
     const projects = loadAll();
     const entry = projects.find(p => p.id === id);
     if (!entry) return;
-    if (!confirm(`Excluir o projeto "${entry.name}"? Essa ação não pode ser desfeita.`)) return;
+    const ok = await Dialog.confirm('Excluir projeto', `Excluir o projeto "${entry.name}"? Essa ação não pode ser desfeita.`);
+    if (!ok) return;
     const filtered = projects.filter(p => p.id !== id);
     saveAll(filtered);
     if (currentProjectId === id) {
+      // o projeto excluído era o que estava aberto na tela — volta tudo
+      // pro estado inicial limpo (igual antes de qualquer projeto existir),
+      // em vez de deixar o conteúdo do projeto já excluído na árvore
       currentProjectId = null;
+      pendingProjectName = null;
+      AppState.viewPanelNodeId = null;
+      TreeModel.setRoot(TreeModel.createNode('Novo projeto', ''));
+      AppState.focusedNodeId = null;
+      AppState.colorLevels = 4;
+      AppState.containerShape = 'capsule';
+      AppState.containerHeight = 'max';
+      AppState.lineStyle = 'smooth';
+      AppState.columnNames = [];
+      AppState.customPalette = [...DEFAULT_PALETTE_HEX];
+      AppState.rootColor = DEFAULT_ROOT_COLOR;
+      Renderer.render();
+      requestAnimationFrame(() => Renderer.fitToScreen());
+      SheetPanel.refresh();
+      ProjectNameBar.markClean();
       ProjectNameBar.refresh();
     }
     render();
@@ -3025,11 +3231,19 @@ const ProjectManager = (() => {
     ProjectNameBar.refresh();
   }
 
-  function startNewProject(){
-    if (!confirm('Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) return;
+  async function startNewProject(){
+    // só pergunta "tem certeza, vai perder alterações" se já existir um
+    // projeto em andamento (carregado ou recém-criado com nome). Com a
+    // tela limpa (nada criado/carregado ainda), não há nada a perder —
+    // pula direto pro nome do novo projeto.
+    const hasActiveProject = !!(currentProjectId || pendingProjectName);
+    if (hasActiveProject) {
+      const ok = await Dialog.confirm('Novo projeto', 'Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.');
+      if (!ok) return;
+    }
 
     const suggested = suggestNewProjectName();
-    const name = prompt('Nome do novo projeto:', suggested);
+    const name = await Dialog.prompt('Novo projeto', 'Nome do novo projeto:', suggested);
     if (name === null) return; // cancelado — não cria nada
     const trimmed = name.trim() || suggested;
 
@@ -3067,7 +3281,9 @@ const ProjectManager = (() => {
         const id = actionBtn.dataset.id;
         const action = actionBtn.dataset.action;
         if (action === 'overwrite') {
-          if (confirm('Atualizar este projeto salvo com o estado atual da árvore?')) overwrite(id);
+          Dialog.confirm('Atualizar projeto', 'Atualizar este projeto salvo com o estado atual da árvore?').then((ok) => {
+            if (ok) overwrite(id);
+          });
         } else if (action === 'rename') {
           renameProject(id);
         } else if (action === 'delete') {
@@ -3124,6 +3340,24 @@ const ProjectNameBar = (() => {
       saveBtn.disabled = !dirty;
       saveBtn.classList.toggle('is-disabled', !dirty);
     }
+
+    // "Salvar" e "Salvar como novo" só fazem sentido quando já existe um
+    // projeto em andamento (carregado do localStorage, ou recém-criado e
+    // com nome definido). Com a tela "limpa" (estado inicial, nada ainda
+    // criado/carregado), eles ficam DESABILITADOS, mas continuam visíveis.
+    const hasActiveProject = !!(ProjectManager.getCurrentProjectId() || name);
+    const saveAsBtn = document.getElementById('btn-save-as-project');
+    if (saveBtn && !hasActiveProject) {
+      // "Salvar" já fica desabilitado quando não há alteração pendente
+      // (dirty, tratado acima); aqui reforçamos o bloqueio também quando
+      // não há projeto ativo, mesmo que dirty seja true
+      saveBtn.disabled = true;
+      saveBtn.classList.add('is-disabled');
+    }
+    if (saveAsBtn) {
+      saveAsBtn.disabled = !hasActiveProject;
+      saveAsBtn.classList.toggle('is-disabled', !hasActiveProject);
+    }
   }
 
   function markDirty(){
@@ -3143,7 +3377,7 @@ const ProjectNameBar = (() => {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.classList.add('is-disabled'); }
   }
 
-  return { refresh, markDirty, markClean };
+  return { refresh, markDirty, markClean, isDirty: () => dirty };
 })();
 
 /* =========================================================
@@ -4425,7 +4659,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
       const text = e.target.result;
       const match = text.match(/<script type="application\/json" id="mindtree-data">([\s\S]*?)<\/script>/);
       if (!match) {
-        alert('Este arquivo HTML não foi gerado pelo MindTree (estrutura de dados não encontrada).');
+        Dialog.alert('Arquivo inválido', 'Este arquivo HTML não foi gerado pelo MindTree (estrutura de dados não encontrada).');
         return;
       }
       try {
@@ -4458,7 +4692,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
         requestAnimationFrame(() => Renderer.fitToScreen());
         SheetPanel.refresh();
       } catch (err) {
-        alert('Não foi possível ler os dados deste arquivo HTML.');
+        Dialog.alert('Erro ao importar', 'Não foi possível ler os dados deste arquivo HTML.');
       }
     };
     reader.readAsText(file, 'utf-8');
@@ -4469,7 +4703,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
     if (name.endsWith('.csv')) importCSV(file);
     else if (name.endsWith('.xlsx') || name.endsWith('.xls')) importXLSX(file);
     else if (name.endsWith('.html') || name.endsWith('.htm')) importHTML(file);
-    else alert('Formato não suportado. Use .csv, .xlsx ou .html');
+    else Dialog.alert('Formato não suportado', 'Use .csv, .xlsx ou .html');
   }
 
   return { exportCSV, exportXLSX, exportHTML, exportCombinedCSV, exportCombinedXLSX, handleFile };
