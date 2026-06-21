@@ -527,7 +527,7 @@
   /* ===== OVERLAY / MODAL (edição) ===== */
   .mt-overlay{
     position:fixed;inset:0;
-    background:rgba(10,11,14,.55);
+    background:rgba(10,11,14,.25);
     backdrop-filter:blur(2px);
     display:flex;align-items:center;justify-content:center;
     z-index:1000;
@@ -537,7 +537,9 @@
   @keyframes mt-fade{from{opacity:0;}to{opacity:1;}}
   .mt-modal{
     width:100%;max-width:420px;
-    background:var(--panel);
+    background:color-mix(in srgb, var(--panel) 55%, transparent);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border-light);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
@@ -610,7 +612,9 @@
   .mt-view-overlay{align-items:center;}
   .mt-view-panel{
     width:100%;max-width:460px;max-height:80vh;
-    background:var(--panel);
+    background:color-mix(in srgb, var(--panel) 55%, transparent);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border-light);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
@@ -651,14 +655,16 @@
 
   /* ===== DRAWER PLANILHA ===== */
   .sheet-overlay{
-    position:fixed;inset:0;background:rgba(10,11,14,.4);
+    position:fixed;inset:0;background:rgba(10,11,14,.2);
     z-index:500;opacity:0;pointer-events:none;transition:opacity .2s;
   }
   .sheet-overlay.open{opacity:1;pointer-events:auto;}
   .sheet-drawer{
     position:fixed;top:0;right:0;bottom:0;
     width:min(560px, 92vw);
-    background:var(--panel);
+    background:color-mix(in srgb, var(--panel) 55%, transparent);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
     border-left:1px solid transparent;
     box-shadow:none;
     z-index:501;
@@ -871,7 +877,9 @@
   /* ===== POPOVER GENÉRICO (usado pelo menu de Exportar) ===== */
   .color-popover{
     position:fixed;
-    background:var(--panel);
+    background:color-mix(in srgb, var(--panel) 55%, transparent);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
     border:1px solid var(--border-light);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
@@ -3251,7 +3259,7 @@ const ImportExport = (() => {
   .tree-capsule{cursor:pointer;}
   .capsule-label{font-size:13px;font-weight:600;pointer-events:none;dominant-baseline:central;text-anchor:middle;}
   .link-path{fill:none;stroke-width:2;}
-  .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.25);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
   .mt-view-panel{width:100%;max-width:460px;max-height:80vh;background:var(--panel);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;}
   .mt-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600;gap:10px;}
   .mt-modal-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;}
