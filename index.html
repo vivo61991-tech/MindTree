@@ -900,6 +900,56 @@
   }
   .style-option-btn.active span{color:var(--accent);}
 
+  /* ===== DRAWER FONTES ===== */
+  .font-drawer{
+    width:min(360px, 92vw);
+  }
+  .font-size-row{
+    display:flex;align-items:center;gap:12px;
+  }
+  .font-size-row input[type="range"]{
+    flex:1;
+    accent-color:var(--accent);
+    cursor:pointer;
+  }
+  .font-size-row span{
+    font-size:13px;font-weight:600;color:var(--text);
+    min-width:40px;text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  .font-select{
+    width:100%;
+    padding:10px 12px;
+    background:var(--panel-2);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    color:var(--text);
+    font-size:13px;font-weight:500;
+    cursor:pointer;
+  }
+  .font-select:hover{border-color:var(--border-light);}
+  .font-toggle-row{
+    display:flex;gap:8px;
+  }
+  .font-toggle-btn{
+    flex:1;
+    height:42px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    color:var(--text-dim);
+    font-size:16px;
+    cursor:pointer;
+    transition:border-color .15s,background .15s,color .15s;
+  }
+  .font-toggle-btn:hover{border-color:var(--border-light);}
+  .font-toggle-btn.active{
+    border-color:var(--accent);
+    background:rgba(91,141,239,.08);
+    color:var(--accent);
+  }
+
   /* ===== DRAWER PROJETOS ===== */
   .projects-drawer{
     width:min(360px, 92vw);
@@ -1250,8 +1300,12 @@
           <svg viewBox="0 0 64 28"><rect x="6" y="2" width="52" height="24" rx="4"/></svg>
           <span>Máxima</span>
         </button>
+        <button class="style-option-btn" data-height="mid">
+          <svg viewBox="0 0 64 28"><rect x="6" y="7" width="52" height="14" rx="4"/></svg>
+          <span>Média</span>
+        </button>
         <button class="style-option-btn" data-height="min">
-          <svg viewBox="0 0 64 28"><rect x="6" y="10" width="52" height="8" rx="4"/></svg>
+          <svg viewBox="0 0 64 28"><rect x="6" y="11" width="52" height="6" rx="3"/></svg>
           <span>Mínima</span>
         </button>
       </div>
@@ -1275,6 +1329,65 @@
         <button class="style-option-btn" data-line="orthogonal">
           <svg viewBox="0 0 64 28"><path d="M4,22 H32 V12 Q32,6 38,6 H60"/></svg>
           <span>Ortogonal</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== DRAWER FONTES ===== -->
+<div id="font-overlay" class="sheet-overlay"></div>
+<div id="font-drawer" class="sheet-drawer font-drawer drawer-left">
+  <div class="sheet-head">
+    <span>Fontes</span>
+    <button class="mt-x" id="font-close">&times;</button>
+  </div>
+  <div class="style-body">
+
+    <div class="style-section">
+      <div class="style-section-title">Tamanho da fonte</div>
+      <div class="font-size-row">
+        <input type="range" id="font-size-range" min="9" max="28" step="1" value="13" />
+        <span id="font-size-value">13px</span>
+      </div>
+    </div>
+
+    <div class="style-section">
+      <div class="style-section-title">Tipo de fonte</div>
+      <select id="font-family-select" class="font-select">
+        <option value="system">Padrão (sistema)</option>
+        <option value="serif">Serifada</option>
+        <option value="mono">Monoespaçada</option>
+        <option value="rounded">Arredondada</option>
+        <option value="condensed">Condensada</option>
+      </select>
+    </div>
+
+    <div class="style-section">
+      <div class="style-section-title">Estilo do texto</div>
+      <div class="font-toggle-row">
+        <button class="font-toggle-btn" id="font-toggle-bold" title="Negrito"><b>B</b></button>
+        <button class="font-toggle-btn" id="font-toggle-italic" title="Itálico"><i>I</i></button>
+        <button class="font-toggle-btn" id="font-toggle-underline" title="Sublinhado"><u>S</u></button>
+        <button class="font-toggle-btn" id="font-toggle-strike" title="Tachado"><s>T</s></button>
+      </div>
+    </div>
+
+    <div class="style-section">
+      <div class="style-section-title">Alinhamento dentro do nó</div>
+      <div class="style-options">
+        <button class="style-option-btn" data-align="left">
+          <svg viewBox="0 0 64 28"><rect x="6" y="6" width="36" height="3" rx="1.5"/><rect x="6" y="13" width="52" height="3" rx="1.5"/><rect x="6" y="20" width="28" height="3" rx="1.5"/></svg>
+          <span>Esquerda</span>
+        </button>
+        <button class="style-option-btn" data-align="center">
+          <svg viewBox="0 0 64 28"><rect x="14" y="6" width="36" height="3" rx="1.5"/><rect x="6" y="13" width="52" height="3" rx="1.5"/><rect x="18" y="20" width="28" height="3" rx="1.5"/></svg>
+          <span>Centro</span>
+        </button>
+        <button class="style-option-btn" data-align="right">
+          <svg viewBox="0 0 64 28"><rect x="22" y="6" width="36" height="3" rx="1.5"/><rect x="6" y="13" width="52" height="3" rx="1.5"/><rect x="30" y="20" width="28" height="3" rx="1.5"/></svg>
+          <span>Direita</span>
         </button>
       </div>
     </div>
@@ -1339,6 +1452,10 @@
       <button class="menu-item" id="menu-btn-style">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
         <span>Estilo</span>
+      </button>
+      <button class="menu-item" id="menu-btn-font">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14M9 4v16M15 4v16M6 20h6M15 20h3"/></svg>
+        <span>Fontes</span>
       </button>
     </div>
     <div class="menu-section">
@@ -1656,12 +1773,31 @@ const AppState = {
   editingFieldId: null,    // id do nó cujo campo está aberto pra edição
   viewPanelNodeId: null,   // id do nó cuja tela de descrição está aberta no momento (mostra a borda de destaque na cápsula)
   containerShape: 'capsule', // 'capsule' | 'rect' | 'rounded'
-  containerHeight: 'max',    // 'max' | 'min'
+  containerHeight: 'max',    // 'max' | 'mid' | 'min'
   lineStyle: 'smooth',       // 'smooth' | 'straight' | 'rounded'
   columnNames: [],           // nomes customizados por nível/profundidade (índice 0 = nível 1).
                               // se vazio ou sem entrada pra um índice, usa "Nível N" como padrão
   customPalette: [...DEFAULT_PALETTE_HEX], // lista editável de cores hex (até 20), usada em sequência
   rootColor: DEFAULT_ROOT_COLOR,           // cor customizável específica para o nó raiz
+
+  // ---- Fontes (texto do título dentro do nó) ----
+  fontSize: 13,              // tamanho da fonte em px
+  fontFamily: 'system',      // chave de FONT_FAMILIES
+  fontBold: false,
+  fontItalic: false,
+  fontUnderline: false,
+  fontStrikethrough: false,
+  textAlign: 'center',       // 'left' | 'center' | 'right'
+};
+
+// fontes disponíveis no seletor — chave usada no estado, valor é a pilha
+// de font-family CSS/SVG real aplicada
+const FONT_FAMILIES = {
+  system: { label: 'Padrão (sistema)', stack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
+  serif: { label: 'Serifada', stack: "Georgia, 'Times New Roman', Times, serif" },
+  mono: { label: 'Monoespaçada', stack: "'SF Mono', 'Courier New', Courier, monospace" },
+  rounded: { label: 'Arredondada', stack: "'Trebuchet MS', Verdana, sans-serif" },
+  condensed: { label: 'Condensada', stack: "'Arial Narrow', 'Helvetica Neue Condensed', sans-serif" },
 };
 
 function getColumnName(levelIndex1Based){
@@ -1737,9 +1873,22 @@ const Renderer = (() => {
 
   // dimensões — nó (círculo) compacto + cápsula curta, só pro título
   const CIRCLE_R = 9;        // raio do nó (círculo clicável que expande/colapsa)
-  const CAPSULE_H_MAX = 36;  // altura máxima da cápsula (atual)
-  const CAPSULE_H_MIN = 22;  // altura mínima — o menor possível pra caber o texto
-  function getCapsuleH(){ return AppState.containerHeight === 'min' ? CAPSULE_H_MIN : CAPSULE_H_MAX; }
+  const CAPSULE_H_MAX = 36;  // altura máxima da cápsula
+  const CAPSULE_H_MID = 22;  // altura média (era a antiga "mínima")
+  const CAPSULE_H_MIN = 17;  // altura mínima — o menor possível pra caber o texto, margem vertical mínima
+  function getCapsuleH(){
+    const base = AppState.containerHeight === 'min' ? CAPSULE_H_MIN
+      : AppState.containerHeight === 'mid' ? CAPSULE_H_MID
+      : CAPSULE_H_MAX;
+    // garante respiro suficiente quando a fonte configurada é maior que o
+    // espaço da opção escolhida — sem isso, fontes grandes ficariam
+    // cortadas na cápsula. Só entra em ação quando realmente necessário
+    // (altura de linha do texto + um pequeno respiro vertical de 6px),
+    // não força a altura pra cima em fontes pequenas/padrão.
+    const fontSize = AppState.fontSize || 13;
+    const minForFont = Math.ceil(fontSize * 1.25) + 6;
+    return Math.max(base, minForFont);
+  }
 
   function getContainerRadius(h){
     if (AppState.containerShape === 'rect') return 0;
@@ -1821,7 +1970,13 @@ const Renderer = (() => {
 
   function capsuleWidth(node){
     const nameLen = (node.name || 'Sem título').length;
-    return Math.max(MIN_CAPSULE_W, Math.round(nameLen * CHAR_W) + PAD_X * 2);
+    // CHAR_W foi calibrado pra fonte de 13px normal — escala proporcional
+    // ao tamanho de fonte configurado, com um acréscimo leve quando o
+    // texto está em negrito (caracteres em negrito ocupam mais espaço)
+    const sizeScale = (AppState.fontSize || 13) / 13;
+    const boldScale = AppState.fontBold ? 1.06 : 1;
+    const effectiveCharW = CHAR_W * sizeScale * boldScale;
+    return Math.max(MIN_CAPSULE_W, Math.round(nameLen * effectiveCharW) + PAD_X * 2);
   }
 
   function buildHierarchy(){
@@ -2192,12 +2347,34 @@ const Renderer = (() => {
       .attr('rx', capRadius)
       .attr('fill', color.fill);
 
+    // ---- posição/ancoragem do texto conforme o alinhamento configurado ----
+    const textPad = 10; // respiro interno quando alinhado à esquerda/direita
+    let textX, textAnchor;
+    if (AppState.textAlign === 'left') {
+      textX = textPad; textAnchor = 'start';
+    } else if (AppState.textAlign === 'right') {
+      textX = w - textPad; textAnchor = 'end';
+    } else {
+      textX = w / 2; textAnchor = 'middle';
+    }
+
+    const fontFamily = (FONT_FAMILIES[AppState.fontFamily] || FONT_FAMILIES.system).stack;
+    const textDecoration = [
+      AppState.fontUnderline ? 'underline' : '',
+      AppState.fontStrikethrough ? 'line-through' : '',
+    ].filter(Boolean).join(' ');
+
     const labelText = capsuleGroup.append('text')
       .attr('class', 'capsule-label')
-      .attr('x', w / 2)
+      .attr('x', textX)
       .attr('y', capH / 2)
-      .attr('text-anchor', 'middle')
-      .attr('fill', color.text);
+      .attr('text-anchor', textAnchor)
+      .attr('fill', color.text)
+      .style('font-size', AppState.fontSize + 'px')
+      .style('font-family', fontFamily)
+      .style('font-weight', AppState.fontBold ? '700' : '600')
+      .style('font-style', AppState.fontItalic ? 'italic' : 'normal')
+      .style('text-decoration', textDecoration || 'none');
 
     labelText.append('tspan').text(truncate(node.name || 'Sem título', 50));
 
@@ -3075,6 +3252,96 @@ const StylePanel = (() => {
 })();
 
 /* =========================================================
+   PAINEL DE FONTES (tamanho, tipo, negrito/itálico/sublinhado/tachado,
+   alinhamento do texto dentro do nó)
+   ========================================================= */
+const FontPanel = (() => {
+  const drawer = document.getElementById('font-drawer');
+  const overlay = document.getElementById('font-overlay');
+  const sizeRange = document.getElementById('font-size-range');
+  const sizeValue = document.getElementById('font-size-value');
+  const familySelect = document.getElementById('font-family-select');
+
+  function syncActiveStates(){
+    sizeRange.value = AppState.fontSize;
+    sizeValue.textContent = AppState.fontSize + 'px';
+    familySelect.value = AppState.fontFamily;
+
+    document.getElementById('font-toggle-bold').classList.toggle('active', AppState.fontBold);
+    document.getElementById('font-toggle-italic').classList.toggle('active', AppState.fontItalic);
+    document.getElementById('font-toggle-underline').classList.toggle('active', AppState.fontUnderline);
+    document.getElementById('font-toggle-strike').classList.toggle('active', AppState.fontStrikethrough);
+
+    document.querySelectorAll('[data-align]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.align === AppState.textAlign);
+    });
+  }
+
+  function applyAndRender(){
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+  }
+
+  function bindEvents(){
+    sizeRange.addEventListener('input', () => {
+      AppState.fontSize = parseInt(sizeRange.value, 10);
+      sizeValue.textContent = AppState.fontSize + 'px';
+      applyAndRender();
+    });
+
+    familySelect.addEventListener('change', () => {
+      AppState.fontFamily = familySelect.value;
+      applyAndRender();
+    });
+
+    document.getElementById('font-toggle-bold').addEventListener('click', () => {
+      AppState.fontBold = !AppState.fontBold;
+      syncActiveStates();
+      applyAndRender();
+    });
+    document.getElementById('font-toggle-italic').addEventListener('click', () => {
+      AppState.fontItalic = !AppState.fontItalic;
+      syncActiveStates();
+      applyAndRender();
+    });
+    document.getElementById('font-toggle-underline').addEventListener('click', () => {
+      AppState.fontUnderline = !AppState.fontUnderline;
+      syncActiveStates();
+      applyAndRender();
+    });
+    document.getElementById('font-toggle-strike').addEventListener('click', () => {
+      AppState.fontStrikethrough = !AppState.fontStrikethrough;
+      syncActiveStates();
+      applyAndRender();
+    });
+
+    document.querySelectorAll('[data-align]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AppState.textAlign = btn.dataset.align;
+        syncActiveStates();
+        Renderer.render();
+      });
+    });
+
+    document.getElementById('font-close').addEventListener('click', close);
+    overlay.addEventListener('click', close);
+  }
+
+  function open(){
+    syncActiveStates();
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function close(){
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  bindEvents();
+  return { open, close };
+})();
+
+/* =========================================================
    GERENCIADOR DE PROJETOS (lista nomeada salva no navegador)
    ========================================================= */
 const ProjectManager = (() => {
@@ -3138,6 +3405,13 @@ const ProjectManager = (() => {
       columnNames: AppState.columnNames,
       customPalette: AppState.customPalette,
       rootColor: AppState.rootColor,
+      fontSize: AppState.fontSize,
+      fontFamily: AppState.fontFamily,
+      fontBold: AppState.fontBold,
+      fontItalic: AppState.fontItalic,
+      fontUnderline: AppState.fontUnderline,
+      fontStrikethrough: AppState.fontStrikethrough,
+      textAlign: AppState.textAlign,
     };
   }
 
@@ -3240,6 +3514,13 @@ const ProjectManager = (() => {
     AppState.columnNames = entry.state.columnNames ?? [];
     AppState.customPalette = (entry.state.customPalette && entry.state.customPalette.length) ? entry.state.customPalette : [...DEFAULT_PALETTE_HEX];
     AppState.rootColor = entry.state.rootColor || DEFAULT_ROOT_COLOR;
+    AppState.fontSize = entry.state.fontSize ?? 13;
+    AppState.fontFamily = entry.state.fontFamily ?? 'system';
+    AppState.fontBold = entry.state.fontBold ?? false;
+    AppState.fontItalic = entry.state.fontItalic ?? false;
+    AppState.fontUnderline = entry.state.fontUnderline ?? false;
+    AppState.fontStrikethrough = entry.state.fontStrikethrough ?? false;
+    AppState.textAlign = entry.state.textAlign ?? 'center';
     AppState.focusedNodeId = null;
     AppState.viewPanelNodeId = null;
 
@@ -3289,6 +3570,13 @@ const ProjectManager = (() => {
       AppState.columnNames = [];
       AppState.customPalette = [...DEFAULT_PALETTE_HEX];
       AppState.rootColor = DEFAULT_ROOT_COLOR;
+      AppState.fontSize = 13;
+      AppState.fontFamily = 'system';
+      AppState.fontBold = false;
+      AppState.fontItalic = false;
+      AppState.fontUnderline = false;
+      AppState.fontStrikethrough = false;
+      AppState.textAlign = 'center';
       Renderer.render();
       requestAnimationFrame(() => Renderer.fitToScreen());
       SheetPanel.refresh();
@@ -3373,6 +3661,13 @@ const ProjectManager = (() => {
     AppState.columnNames = [];
     AppState.customPalette = [...DEFAULT_PALETTE_HEX];
     AppState.rootColor = DEFAULT_ROOT_COLOR;
+    AppState.fontSize = 13;
+    AppState.fontFamily = 'system';
+    AppState.fontBold = false;
+    AppState.fontItalic = false;
+    AppState.fontUnderline = false;
+    AppState.fontStrikethrough = false;
+    AppState.textAlign = 'center';
     currentProjectId = null;
     pendingProjectName = trimmed;
     Renderer.render();
@@ -3847,11 +4142,20 @@ const ImportExport = (() => {
     const columnNamesJson = JSON.stringify(AppState.columnNames || []);
     const customPaletteJson = JSON.stringify((AppState.customPalette && AppState.customPalette.length) ? AppState.customPalette : DEFAULT_PALETTE_HEX);
     const rootColor = AppState.rootColor || DEFAULT_ROOT_COLOR;
-    const html = buildStandaloneHTML(dataJson, colorLevels, AppState.containerShape, AppState.containerHeight, AppState.lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor);
+    const fontConfigJson = JSON.stringify({
+      fontSize: AppState.fontSize,
+      fontFamily: AppState.fontFamily,
+      fontBold: AppState.fontBold,
+      fontItalic: AppState.fontItalic,
+      fontUnderline: AppState.fontUnderline,
+      fontStrikethrough: AppState.fontStrikethrough,
+      textAlign: AppState.textAlign,
+    });
+    const html = buildStandaloneHTML(dataJson, colorLevels, AppState.containerShape, AppState.containerHeight, AppState.lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor, fontConfigJson);
     downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), buildExportFilename('mindtree-apresentacao', 'html'));
   }
 
-  function buildStandaloneHTML(dataJson, colorLevels, containerShape, containerHeight, lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor){
+  function buildStandaloneHTML(dataJson, colorLevels, containerShape, containerHeight, lineStyle, projectName, columnNamesJson, customPaletteJson, rootColor, fontConfigJson){
     // arquivo enxuto, somente leitura, com os mesmos estilos de nó/cor
     // contém um marcador <!--MINDTREE_DATA:...--> para permitir reimportação
     return `<!doctype html>
@@ -3940,7 +4244,7 @@ const ImportExport = (() => {
 </div>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"><\/script>
 <script type="application/json" id="mindtree-data">${dataJson}<\/script>
-<script type="application/json" id="mindtree-style">${JSON.stringify({colorLevels, containerShape, containerHeight, lineStyle, columnNames: JSON.parse(columnNamesJson), customPalette: JSON.parse(customPaletteJson), rootColor})}<\/script>
+<script type="application/json" id="mindtree-style">${JSON.stringify({colorLevels, containerShape, containerHeight, lineStyle, columnNames: JSON.parse(columnNamesJson), customPalette: JSON.parse(customPaletteJson), rootColor, font: JSON.parse(fontConfigJson)})}<\/script>
 <script>
 const TREE_DATA = JSON.parse(document.getElementById('mindtree-data').textContent);
 const COLOR_LEVELS = ${colorLevels};
@@ -3949,6 +4253,14 @@ const CONTAINER_HEIGHT = '${containerHeight}';
 const LINE_STYLE = '${lineStyle}';
 const CUSTOM_PALETTE = ${customPaletteJson};
 const ROOT_COLOR = '${rootColor}';
+const FONT_CONFIG = ${fontConfigJson};
+const FONT_FAMILIES = {
+  system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  serif: "Georgia, 'Times New Roman', Times, serif",
+  mono: "'SF Mono', 'Courier New', Courier, monospace",
+  rounded: "'Trebuchet MS', Verdana, sans-serif",
+  condensed: "'Arial Narrow', 'Helvetica Neue Condensed', sans-serif",
+};
 
 function theme(){
   const attr = document.documentElement.getAttribute('data-theme');
@@ -3999,8 +4311,15 @@ function colorByIndex(idx){
   return colorPairFromHex(hex)[t];
 }
 
-const CIRCLE_R=9, CAPSULE_H_MAX=36, CAPSULE_H_MIN=22, CAPSULE_GAP=14, MIN_CAPSULE_W=70, PAD_X=14, ROW_H=46, LEVEL_GAP=64, PADDING=90, CHAR_W=7.6;
-function getCapsuleH(){ return CONTAINER_HEIGHT === 'min' ? CAPSULE_H_MIN : CAPSULE_H_MAX; }
+const CIRCLE_R=9, CAPSULE_H_MAX=36, CAPSULE_H_MID=22, CAPSULE_H_MIN=17, CAPSULE_GAP=14, MIN_CAPSULE_W=70, PAD_X=14, ROW_H=46, LEVEL_GAP=64, PADDING=90, CHAR_W=7.6;
+function getCapsuleH(){
+  const base = CONTAINER_HEIGHT === 'min' ? CAPSULE_H_MIN
+    : CONTAINER_HEIGHT === 'mid' ? CAPSULE_H_MID
+    : CAPSULE_H_MAX;
+  const fontSize = FONT_CONFIG.fontSize || 13;
+  const minForFont = Math.ceil(fontSize * 1.25) + 6;
+  return Math.max(base, minForFont);
+}
 function getContainerRadius(h){
   if (CONTAINER_SHAPE === 'rect') return 0;
   if (CONTAINER_SHAPE === 'rounded') return 6;
@@ -4046,7 +4365,10 @@ function escapeHtml(s){ if(!s) return ''; const d=document.createElement('div');
 function findNode(id, node){ node = node || TREE_DATA; if(node.id===id) return node; for(const c of node.children){ const f=findNode(id,c); if(f) return f; } return null; }
 function capsuleWidth(node){
   const nameLen = (node.name||'Sem título').length;
-  return Math.max(MIN_CAPSULE_W, Math.round(nameLen*CHAR_W)+PAD_X*2);
+  const sizeScale = (FONT_CONFIG.fontSize || 13) / 13;
+  const boldScale = FONT_CONFIG.fontBold ? 1.06 : 1;
+  const effectiveCharW = CHAR_W * sizeScale * boldScale;
+  return Math.max(MIN_CAPSULE_W, Math.round(nameLen*effectiveCharW)+PAD_X*2);
 }
 function buildHierarchy(){
   const root = d3.hierarchy(TREE_DATA, d => d.collapsed ? null : d.children);
@@ -4263,7 +4585,27 @@ function render(){
       .attr('transform', \`translate(0, \${-capH/2})\`)
       .on('click', () => openView(d.data.id));
     capGrp.append('rect').attr('width',w).attr('height',capH).attr('rx',capRadius).attr('fill',color.fill);
-    const labelText = capGrp.append('text').attr('class','capsule-label').attr('x',w/2).attr('y',capH/2).attr('fill',color.text);
+
+    const textPad = 10;
+    let textX, textAnchor;
+    if (FONT_CONFIG.textAlign === 'left') { textX = textPad; textAnchor = 'start'; }
+    else if (FONT_CONFIG.textAlign === 'right') { textX = w - textPad; textAnchor = 'end'; }
+    else { textX = w / 2; textAnchor = 'middle'; }
+    const fontFamilyStack = FONT_FAMILIES[FONT_CONFIG.fontFamily] || FONT_FAMILIES.system;
+    const textDecoration = [
+      FONT_CONFIG.fontUnderline ? 'underline' : '',
+      FONT_CONFIG.fontStrikethrough ? 'line-through' : '',
+    ].filter(Boolean).join(' ');
+
+    const labelText = capGrp.append('text').attr('class','capsule-label')
+      .attr('x',textX).attr('y',capH/2)
+      .attr('text-anchor', textAnchor)
+      .attr('fill',color.text)
+      .style('font-size', FONT_CONFIG.fontSize + 'px')
+      .style('font-family', fontFamilyStack)
+      .style('font-weight', FONT_CONFIG.fontBold ? '700' : '600')
+      .style('font-style', FONT_CONFIG.fontItalic ? 'italic' : 'normal')
+      .style('text-decoration', textDecoration || 'none');
     labelText.append('tspan').text(truncate(d.data.name||'Sem título',50));
 
     const circleX = w + CAPSULE_GAP + CIRCLE_R;
@@ -4878,6 +5220,19 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
             if (Array.isArray(style.columnNames)) AppState.columnNames = style.columnNames;
             if (Array.isArray(style.customPalette) && style.customPalette.length) AppState.customPalette = style.customPalette;
             if (style.rootColor) AppState.rootColor = style.rootColor;
+            // configurações de fonte — só presentes em exports feitos após
+            // essa funcionalidade existir; arquivos antigos seguem com os
+            // valores padrão já em uso, sem quebrar a importação
+            if (style.font && typeof style.font === 'object') {
+              const f = style.font;
+              if (typeof f.fontSize === 'number') AppState.fontSize = f.fontSize;
+              if (f.fontFamily) AppState.fontFamily = f.fontFamily;
+              if (typeof f.fontBold === 'boolean') AppState.fontBold = f.fontBold;
+              if (typeof f.fontItalic === 'boolean') AppState.fontItalic = f.fontItalic;
+              if (typeof f.fontUnderline === 'boolean') AppState.fontUnderline = f.fontUnderline;
+              if (typeof f.fontStrikethrough === 'boolean') AppState.fontStrikethrough = f.fontStrikethrough;
+              if (f.textAlign) AppState.textAlign = f.textAlign;
+            }
           } catch (styleErr) {
             // arquivo antigo, exportado antes dessa funcionalidade — segue
             // sem aplicar estilo customizado, sem quebrar a importação
@@ -5239,6 +5594,10 @@ function bootstrap(){
   document.getElementById('menu-btn-style').addEventListener('click', () => {
     closeMainMenu();
     StylePanel.open();
+  });
+  document.getElementById('menu-btn-font').addEventListener('click', () => {
+    closeMainMenu();
+    FontPanel.open();
   });
   document.getElementById('menu-btn-projects').addEventListener('click', () => {
     closeMainMenu();
