@@ -2725,7 +2725,13 @@ const NodeInteraction = (() => {
         `
       : '';
 
-    const backBtnHtml = history.length
+    // o "voltar" deve aparecer sempre que o nó tiver um pai real na árvore
+    // — seja porque o usuário navegou até aqui de dentro do painel
+    // (history preenchido), seja porque clicou direto neste nó na árvore
+    // (history vazio, mas o nó não é a raiz). Nesse segundo caso, "voltar"
+    // sobe pro pai estrutural real (via TreeModel), não fica escondido.
+    const structuralParentId = TreeModel.findParent(nodeId)?.id || null;
+    const backBtnHtml = (history.length || structuralParentId)
       ? `<button class="mt-back" data-action="back" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>`
       : '';
 
@@ -2782,8 +2788,12 @@ const NodeInteraction = (() => {
     panel.addEventListener('click', (ev) => {
       const backBtn = ev.target.closest('[data-action="back"]');
       if (backBtn) {
-        const prevId = history[history.length - 1];
-        const newHistory = history.slice(0, -1);
+        // se há histórico de navegação no painel, volta pro último nó
+        // visitado nele; senão (clicou direto na árvore), sobe pro pai
+        // estrutural real do nó atual
+        const prevId = history.length ? history[history.length - 1] : structuralParentId;
+        const newHistory = history.length ? history.slice(0, -1) : [];
+        if (!prevId) return;
         panel.remove();
         AppState.focusedNodeId = prevId;
         Renderer.render();
@@ -3822,6 +3832,10 @@ const ImportExport = (() => {
   .mt-back{background:var(--panel-2);border:1px solid var(--border-light);color:var(--text-dim);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;}
   .mt-back:hover{background:var(--panel);color:var(--text);}
   .mt-back svg{width:15px;height:15px;}
+  .mt-sibling-nav-group{display:flex;align-items:center;gap:6px;flex:none;}
+  .mt-sibling-nav{background:var(--panel-2);border:1px solid var(--border-light);color:var(--text-dim);width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;}
+  .mt-sibling-nav:hover{background:var(--panel);color:var(--text);}
+  .mt-sibling-nav svg{width:15px;height:15px;}
   .mt-x{background:none;border:none;color:var(--text-dim);font-size:22px;line-height:1;cursor:pointer;}
   .mt-modal-body{padding:16px;overflow-y:auto;}
   .mt-view-text{font-size:14px;line-height:1.6;color:var(--text-dim);margin:0 0 14px;}
@@ -4389,7 +4403,13 @@ function openView(nodeId, history){
       </div>\`).join('');
     childrenSectionHtml = \`<div class="mt-children-title">Destinos (\${node.children.length})</div><div class="mt-children-list">\${childrenHtml}</div>\`;
   }
-  const backBtnHtml = history.length
+  // o "voltar" deve aparecer sempre que o nó tiver um pai real na árvore
+  // — seja porque o usuário navegou até aqui de dentro do painel (history
+  // preenchido), seja porque clicou direto neste nó na árvore (history
+  // vazio, mas o nó não é a raiz). Nesse segundo caso, "voltar" sobe pro
+  // pai estrutural real, não fica escondido.
+  const structuralParentId = findParentInTree(nodeId)?.id || null;
+  const backBtnHtml = (history.length || structuralParentId)
     ? '<button class="mt-back" id="vpback" title="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>'
     : '';
   // indicadores de irmão (↑ acessa o de cima, ↓ acessa o de baixo) — só
@@ -4426,8 +4446,12 @@ function openView(nodeId, history){
   panel.addEventListener('click', ev => {
     const backBtn = ev.target.closest('#vpback');
     if (backBtn) {
-      const prevId = history[history.length - 1];
-      const newHistory = history.slice(0, -1);
+      // se há histórico de navegação no painel, volta pro último nó
+      // visitado nele; senão (clicou direto na árvore), sobe pro pai
+      // estrutural real do nó atual
+      const prevId = history.length ? history[history.length - 1] : structuralParentId;
+      const newHistory = history.length ? history.slice(0, -1) : [];
+      if (!prevId) return;
       panel.remove();
       if (viewPanelNavTimer) clearTimeout(viewPanelNavTimer);
       viewPanelNavTimer = setTimeout(() => openView(prevId, newHistory), NAV_DELAY_MS);
