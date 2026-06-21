@@ -517,6 +517,11 @@
     .tb-btn span.label{display:none;}
     .tb-btn{padding:0;width:36px;justify-content:center;}
     .tb-btn.has-label{width:auto;padding:0 10px;}
+    /* botões largos do drawer de Projetos (Novo projeto / Salvar / Salvar
+       como novo) têm width:100% e sobra de espaço de sobra — o texto deve
+       continuar visível mesmo no smartphone */
+    .projects-toolbar .tb-btn.has-label{width:100%;padding:0 14px;}
+    .projects-toolbar .tb-btn span.label{display:inline;}
   }
 
   /* ===== OVERLAY / MODAL (edição) ===== */
@@ -2551,6 +2556,7 @@ const ProjectManager = (() => {
   const listEl = document.getElementById('projects-list');
 
   let currentProjectId = null; // id do projeto atualmente carregado, se houver
+  let pendingProjectName = null; // nome escolhido pra um projeto novo ainda não salvo
 
   function loadAll(){
     try {
@@ -2575,6 +2581,19 @@ const ProjectManager = (() => {
     return 'p' + Date.now() + Math.random().toString(36).slice(2, 7);
   }
 
+  // sugere "Novo projeto", ou "Novo projeto 2", "Novo projeto 3"... caso já
+  // existam projetos salvos com esses nomes — só serve de ponto de partida
+  // pré-preenchido no campo; a pessoa pode digitar o nome que quiser.
+  function suggestNewProjectName(){
+    const projects = loadAll();
+    const existingNames = new Set(projects.map(p => p.name));
+    const base = 'Novo projeto';
+    if (!existingNames.has(base)) return base;
+    let n = 2;
+    while (existingNames.has(base + ' ' + n)) n++;
+    return base + ' ' + n;
+  }
+
   function formatDate(ts){
     const d = new Date(ts);
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
@@ -2595,7 +2614,7 @@ const ProjectManager = (() => {
   }
 
   function saveAsNew(forcedName){
-    const defaultName = TreeModel.getRoot().name || 'Projeto sem nome';
+    const defaultName = pendingProjectName || getCurrentProjectName() || TreeModel.getRoot().name || 'Projeto sem nome';
     let trimmed;
     if (forcedName !== undefined) {
       trimmed = forcedName;
@@ -2615,6 +2634,7 @@ const ProjectManager = (() => {
     projects.unshift(entry);
     if (saveAll(projects)) {
       currentProjectId = entry.id;
+      pendingProjectName = null;
       render();
       ProjectNameBar.markClean();
       ProjectNameBar.refresh();
@@ -2677,6 +2697,7 @@ const ProjectManager = (() => {
     AppState.focusedNodeId = null;
 
     currentProjectId = id;
+    pendingProjectName = null;
     Renderer.render();
     requestAnimationFrame(() => Renderer.fitToScreen());
     SheetPanel.refresh();
@@ -2746,22 +2767,29 @@ const ProjectManager = (() => {
   }
 
   function getCurrentProjectName(){
-    if (!currentProjectId) return null;
+    if (!currentProjectId) return pendingProjectName;
     const projects = loadAll();
     const entry = projects.find(p => p.id === currentProjectId);
-    return entry ? entry.name : null;
+    return entry ? entry.name : pendingProjectName;
   }
 
   function getCurrentProjectId(){ return currentProjectId; }
 
   function clearCurrentProject(){
     currentProjectId = null;
+    pendingProjectName = null;
     ProjectNameBar.refresh();
   }
 
   function startNewProject(){
     if (!confirm('Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) return;
-    TreeModel.setRoot(TreeModel.createNode('Novo projeto', ''));
+
+    const suggested = suggestNewProjectName();
+    const name = prompt('Nome do novo projeto:', suggested);
+    if (name === null) return; // cancelado — não cria nada
+    const trimmed = name.trim() || suggested;
+
+    TreeModel.setRoot(TreeModel.createNode(trimmed, ''));
     AppState.focusedNodeId = null;
     AppState.colorLevels = 4;
     AppState.containerShape = 'capsule';
@@ -2771,6 +2799,7 @@ const ProjectManager = (() => {
     AppState.customPalette = [...DEFAULT_PALETTE_HEX];
     AppState.rootColor = DEFAULT_ROOT_COLOR;
     currentProjectId = null;
+    pendingProjectName = trimmed;
     Renderer.render();
     requestAnimationFrame(() => Renderer.fitToScreen());
     SheetPanel.refresh();
