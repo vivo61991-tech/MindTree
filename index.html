@@ -29,8 +29,8 @@
     --text:#eceef2;
     --text-dim:#9a9ba5;
     --text-faint:#6b6c75;
-    --accent:#5b8def;
-    --accent-2:#4a7adb;
+    --accent:#86b528;
+    --accent-2:#729a22;
     --danger:#e2554f;
     --success:#3fb37f;
     --radius:10px;
@@ -40,6 +40,12 @@
     --dot-color:#33343d;
     --btn-text-on-color:#000000;
     --highlight-ring:#3a3c46;
+    /* cores PADRÃO do sistema para ações: usar sempre que houver um botão
+       de "aceitar/executar" (verde) ou "recusar/remover" (laranja), em
+       qualquer parte do app — cor sólida, sem borda, texto contrastando
+       com o tema (preto no escuro, branco no claro, via --btn-text-on-color) */
+    --action-confirm:#86b528;
+    --action-reject:#ff9901;
   }
   @media (prefers-color-scheme: light){
     :root{
@@ -52,29 +58,33 @@
       --text:#1c1e22;
       --text-dim:#5c5f68;
       --text-faint:#8b8e96;
-      --accent:#3b6fd9;
-      --accent-2:#2f5cc0;
+      --accent:#86b528;
+      --accent-2:#729a22;
       --danger:#d23b35;
       --success:#27915f;
       --shadow:0 4px 20px rgba(20,20,30,.12);
       --dot-color:#d7d9de;
       --btn-text-on-color:#ffffff;
       --highlight-ring:#ffffff;
+      --action-confirm:#86b528;
+      --action-reject:#ff9901;
     }
   }
   html[data-theme="dark"]{
     --bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;
     --border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;
-    --text-faint:#6b6c75;--accent:#5b8def;--accent-2:#4a7adb;--danger:#e2554f;
+    --text-faint:#6b6c75;--accent:#86b528;--accent-2:#729a22;--danger:#e2554f;
     --success:#3fb37f;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;
     --btn-text-on-color:#000000;--highlight-ring:#3a3c46;
+    --action-confirm:#86b528;--action-reject:#ff9901;
   }
   html[data-theme="light"]{
     --bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;
     --border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;
-    --text-faint:#8b8e96;--accent:#3b6fd9;--accent-2:#2f5cc0;--danger:#d23b35;
+    --text-faint:#8b8e96;--accent:#86b528;--accent-2:#729a22;--danger:#d23b35;
     --success:#27915f;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;
     --btn-text-on-color:#ffffff;--highlight-ring:#ffffff;
+    --action-confirm:#86b528;--action-reject:#ff9901;
   }
   *{box-sizing:border-box;}
   html,body{
@@ -106,7 +116,7 @@
     margin-right:8px;white-space:nowrap;
     display:flex;align-items:center;gap:6px;
   }
-  #topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+  #topbar .brand .brand-icon{width:20px;height:20px;border-radius:5px;flex:none;object-fit:contain;}
   .tb-spacer{flex:1;}
   .tb-btn{
     display:inline-flex;align-items:center;gap:6px;
@@ -311,7 +321,7 @@
     display:flex;
     position:fixed;
     top:calc(var(--topbar-h) + 10px);
-    right:14px;
+    right:60px;
     width:38px;height:38px;
     align-items:center;justify-content:center;
     background:color-mix(in srgb, var(--panel) 88%, transparent);
@@ -326,6 +336,32 @@
   }
   #search-toggle-btn svg{width:18px;height:18px;}
   #search-toggle-btn:hover{color:var(--text);}
+
+  /* ---- BOTÃO DE FILTRAR (mesmo formato da lupa, à direita dela) ---- */
+  #filter-toggle-btn{
+    display:flex;
+    position:fixed;
+    top:calc(var(--topbar-h) + 10px);
+    right:14px;
+    width:38px;height:38px;
+    align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border:1px solid var(--border-light);
+    border-radius:50%;
+    color:var(--text-dim);
+    box-shadow:var(--shadow);
+    cursor:pointer;
+    z-index:61;
+  }
+  #filter-toggle-btn svg{width:17px;height:17px;}
+  #filter-toggle-btn:hover{color:var(--text);}
+  #filter-toggle-btn.active{
+    color:#fff;
+    background:var(--accent);
+    border-color:var(--accent);
+  }
 
   /* ---- BOTÃO DE SALVAR RÁPIDO (flutuante, topo esquerdo, só ícone) ----
      só aparece quando existem alterações não salvas; some assim que o
@@ -458,6 +494,115 @@
     to{ opacity:1; transform:translateY(0); }
   }
 
+  /* ---- PAINEL DE FILTRO POR NÍVEL (suspenso, abaixo do botão de filtro) ---- */
+  #filter-bar{
+    display:none;
+    position:fixed;
+    top:calc(var(--topbar-h) + 64px);
+    right:14px;
+    width:min(300px, 86vw);
+    z-index:60;
+  }
+  #filter-bar.open{ display:block; }
+  #filter-bar-inner{
+    display:flex;flex-direction:column;gap:10px;
+    background:color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius);
+    padding:14px;
+    box-shadow:var(--shadow);
+  }
+  #filter-level-row, #filter-value-row{
+    display:flex;flex-direction:column;gap:6px;
+  }
+  #filter-level-row label, #filter-value-row label{
+    font-size:11px;font-weight:600;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.03em;
+  }
+  #filter-level-select{
+    width:100%;
+    padding:9px 10px;
+    background:var(--panel-2);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    color:var(--text);
+    font-size:13px;font-weight:500;
+    cursor:pointer;
+  }
+  #filter-level-select:hover{border-color:var(--border-light);}
+  #filter-value-wrap{
+    position:relative;
+  }
+  #filter-value-input{
+    width:100%;
+    padding:9px 10px;
+    background:var(--panel-2);
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-sm);
+    color:var(--text);
+    font-size:13px;
+    outline:none;
+  }
+  #filter-value-input:focus{border-color:var(--accent);}
+  #filter-value-dropdown{
+    display:none;
+    position:absolute;
+    top:calc(100% + 4px);
+    left:0;right:0;
+    max-height:220px;
+    overflow-y:auto;
+    background:color-mix(in srgb, var(--panel) 94%, transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-sm);
+    box-shadow:var(--shadow);
+    z-index:65;
+  }
+  #filter-value-dropdown.open{display:block;}
+  .filter-value-option{
+    padding:9px 12px;
+    font-size:13px;color:var(--text);
+    cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .filter-value-option:hover, .filter-value-option.highlighted{
+    background:var(--panel-2);
+  }
+  .filter-value-empty{
+    padding:9px 12px;
+    font-size:12.5px;color:var(--text-faint);font-style:italic;
+  }
+  #filter-active-row{
+    display:flex;flex-direction:column;gap:8px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--border);
+  }
+  #filter-active-info{
+    display:flex;align-items:center;gap:8px;
+    font-size:12.5px;color:var(--text-dim);
+  }
+  #filter-active-info svg{width:14px;height:14px;flex:none;color:var(--accent);}
+  #filter-active-name{
+    font-weight:600;color:var(--text);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  #filter-clear-btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;
+    padding:9px 0;
+    background:var(--action-reject);
+    border:none;
+    border-radius:999px;
+    color:var(--btn-text-on-color);
+    font-size:12.5px;font-weight:600;
+    cursor:pointer;
+  }
+  #filter-clear-btn:hover{background:color-mix(in srgb, var(--action-reject) 85%, black 15%);}
+  #filter-clear-btn svg{width:13px;height:13px;}
+
   /* destaque de cápsula encontrada na busca */
   .capsule-rect.search-match{
     stroke:#ffc83c;
@@ -476,7 +621,7 @@
     transition:filter .15s,r .15s;
   }
   .tree-node-circle:hover .circle-base{filter:brightness(1.15);}
-  .tree-node-circle.focused .circle-base{filter:drop-shadow(0 0 0 4px rgba(91,141,239,.35));}
+  .tree-node-circle.focused .circle-base{filter:drop-shadow(0 0 0 4px rgba(134,181,40,.35));}
   .circle-glyph{
     stroke:var(--panel);
     stroke-width:1.6;
@@ -491,7 +636,7 @@
     filter:drop-shadow(0 1px 4px rgba(0,0,0,.16));
   }
   .tree-capsule:hover .capsule-rect{filter:drop-shadow(0 2px 8px rgba(0,0,0,.24)) brightness(1.06);}
-  .tree-capsule.focused .capsule-rect{filter:drop-shadow(0 0 0 3px rgba(91,141,239,.4)) drop-shadow(0 2px 8px rgba(0,0,0,.2));}
+  .tree-capsule.focused .capsule-rect{filter:drop-shadow(0 0 0 3px rgba(134,181,40,.4)) drop-shadow(0 2px 8px rgba(0,0,0,.2));}
   .capsule-label{
     font-size:13px;
     font-weight:600;
@@ -663,22 +808,22 @@
   .mt-btn:hover{background:color-mix(in srgb, var(--panel-2) 80%, var(--text) 20%);}
   .mt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .mt-btn.primary:hover{background:var(--accent-2);}
-  .mt-btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
-  .mt-btn.danger:hover{background:rgba(226,85,79,.12);}
+  .mt-btn.danger{background:var(--action-reject);border:none;color:var(--btn-text-on-color);}
+  .mt-btn.danger:hover{background:color-mix(in srgb, var(--action-reject) 85%, black 15%);}
   .mt-btn.confirm{
-    background:color-mix(in srgb, #86b528 92%, transparent);
+    background:var(--action-confirm);
     border:none;color:var(--btn-text-on-color);border-radius:999px;
     padding:0 20px;
     display:flex;align-items:center;gap:7px;
   }
-  .mt-btn.confirm:hover{background:color-mix(in srgb, #86b528 100%, transparent);}
+  .mt-btn.confirm:hover{background:color-mix(in srgb, var(--action-confirm) 85%, black 15%);}
   .mt-btn.cancel{
-    background:color-mix(in srgb, #ff9901 92%, transparent);
+    background:var(--action-reject);
     border:none;color:var(--btn-text-on-color);border-radius:999px;
     padding:0 20px;
     display:flex;align-items:center;gap:7px;
   }
-  .mt-btn.cancel:hover{background:color-mix(in srgb, #ff9901 100%, transparent);}
+  .mt-btn.cancel:hover{background:color-mix(in srgb, var(--action-reject) 85%, black 15%);}
   .mt-btn-icon{font-size:13px;line-height:1;color:var(--btn-text-on-color);}
 
   /* ===== CAIXA DE DIÁLOGO PRÓPRIA (confirm/alert/prompt) =====
@@ -750,7 +895,7 @@
   }
   .mt-child-count{
     font-size:11px;font-weight:600;color:var(--accent);
-    background:rgba(91,141,239,.15);
+    background:rgba(134,181,40,.15);
     border-radius:10px;padding:2px 7px;flex:none;
   }
   .mt-chevron{width:16px;height:16px;color:var(--text-faint);flex:none;}
@@ -798,6 +943,10 @@
     display:flex;align-items:center;justify-content:space-between;
     padding:16px 18px;border-bottom:1px solid var(--border);
     font-size:15px;font-weight:600;
+  }
+  .sheet-head-left{
+    display:flex;align-items:center;gap:10px;
+    min-width:0;
   }
   .sheet-toolbar{padding:10px 18px;border-bottom:1px solid var(--border);}
   .sheet-info{font-size:12px;color:var(--text-faint);}
@@ -883,7 +1032,7 @@
   .style-option-btn:hover{border-color:var(--border-light);}
   .style-option-btn.active{
     border-color:var(--accent);
-    background:rgba(91,141,239,.08);
+    background:rgba(134,181,40,.08);
   }
   .style-option-btn svg{
     width:48px;height:22px;
@@ -946,7 +1095,7 @@
   .font-toggle-btn:hover{border-color:var(--border-light);}
   .font-toggle-btn.active{
     border-color:var(--accent);
-    background:rgba(91,141,239,.08);
+    background:rgba(134,181,40,.08);
     color:var(--accent);
   }
 
@@ -983,7 +1132,7 @@
     transition:border-color .15s,background .15s;
   }
   .project-row:hover{border-color:var(--accent);background:color-mix(in srgb, var(--panel-2) 85%, var(--text) 15%);}
-  .project-row.current{border-color:var(--accent);background:rgba(91,141,239,.08);}
+  .project-row.current{border-color:var(--accent);background:rgba(134,181,40,.08);}
   .project-row-main{flex:1;min-width:0;}
   .project-row-name{font-size:13.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .project-row-meta{font-size:11px;color:var(--text-faint);margin-top:2px;}
@@ -1043,6 +1192,12 @@
   }
   .color-popover.open{display:block;}
   .export-menu-popover{width:260px;}
+  .color-pop-head{
+    font-size:11px;font-weight:600;
+    color:var(--text-faint);
+    text-transform:uppercase;letter-spacing:.03em;
+    margin-bottom:8px;
+  }
 
   /* ===== DRAWER DE CORES ===== */
   .color-drawer{ width:min(420px, 92vw); }
@@ -1152,7 +1307,7 @@
 <body>
 
 <div id="topbar">
-  <div class="brand"><span class="dot"></span><span class="full">MindTree</span></div>
+  <div class="brand"><img class="brand-icon" src="favicon-192.png" alt="" /><span class="full">MindTree</span></div>
 
   <div id="mode-toggle">
     <button id="mode-edit-btn" class="active" data-mode="edit">Editar</button>
@@ -1187,6 +1342,10 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
 </button>
 
+<button id="filter-toggle-btn" title="Filtrar por nível">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+</button>
+
 <button id="btn-menu" title="Menu">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
 </button>
@@ -1211,6 +1370,34 @@
   <div id="search-preview" style="display:none">
     <span id="search-preview-name"></span>
     <span id="search-preview-count"></span>
+  </div>
+</div>
+
+<div id="filter-bar">
+  <div id="filter-bar-inner">
+    <div id="filter-active-row" style="display:none">
+      <div id="filter-active-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+        <span id="filter-active-name"></span>
+      </div>
+      <button id="filter-clear-btn" title="Remover filtro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        Remover filtro
+      </button>
+    </div>
+    <div id="filter-level-row">
+      <label for="filter-level-select">Nível</label>
+      <select id="filter-level-select">
+        <option value="">Selecione...</option>
+      </select>
+    </div>
+    <div id="filter-value-row" style="display:none">
+      <label for="filter-value-input">Item</label>
+      <div id="filter-value-wrap">
+        <input type="text" id="filter-value-input" placeholder="Digite ou escolha..." autocomplete="off" />
+        <div id="filter-value-dropdown"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1254,7 +1441,10 @@
 <div id="sheet-overlay" class="sheet-overlay"></div>
 <div id="sheet-drawer" class="sheet-drawer">
   <div class="sheet-head">
-    <span>Planilha</span>
+    <div class="sheet-head-left">
+      <button class="mt-back" id="sheet-back-to-menu" title="Voltar ao Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Planilha</span>
+    </div>
     <button class="mt-x" id="sheet-close">&times;</button>
   </div>
   <div class="sheet-toolbar">
@@ -1270,7 +1460,10 @@
 <div id="style-overlay" class="sheet-overlay"></div>
 <div id="style-drawer" class="sheet-drawer style-drawer drawer-left">
   <div class="sheet-head">
-    <span>Estilo</span>
+    <div class="sheet-head-left">
+      <button class="mt-back" id="style-back-to-menu" title="Voltar ao Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Estilo</span>
+    </div>
     <button class="mt-x" id="style-close">&times;</button>
   </div>
   <div class="style-body">
@@ -1340,7 +1533,10 @@
 <div id="font-overlay" class="sheet-overlay"></div>
 <div id="font-drawer" class="sheet-drawer font-drawer drawer-left">
   <div class="sheet-head">
-    <span>Fontes</span>
+    <div class="sheet-head-left">
+      <button class="mt-back" id="font-back-to-menu" title="Voltar ao Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Fontes</span>
+    </div>
     <button class="mt-x" id="font-close">&times;</button>
   </div>
   <div class="style-body">
@@ -1400,7 +1596,10 @@
 <div id="projects-overlay" class="sheet-overlay"></div>
 <div id="projects-drawer" class="sheet-drawer projects-drawer drawer-left">
   <div class="sheet-head">
-    <span>Projetos</span>
+    <div class="sheet-head-left">
+      <button class="mt-back" id="projects-back-to-menu" title="Voltar ao Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Projetos</span>
+    </div>
     <button class="mt-x" id="projects-close">&times;</button>
   </div>
   <div class="projects-toolbar projects-toolbar-top">
@@ -1480,7 +1679,10 @@
 <div id="color-overlay" class="sheet-overlay"></div>
 <div id="color-drawer" class="sheet-drawer color-drawer drawer-left">
   <div class="sheet-head">
-    <span>Cores</span>
+    <div class="sheet-head-left">
+      <button class="mt-back" id="color-back-to-menu" title="Voltar ao Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Cores</span>
+    </div>
     <button class="mt-x" id="color-close">&times;</button>
   </div>
   <div class="color-drawer-body">
@@ -1747,10 +1949,22 @@ const TreeModel = (() => {
     return Math.max(...node.children.map(c => maxDepth(c, d + 1)));
   }
 
+  // lista todos os nós numa PROFUNDIDADE específica (0 = raiz, 1 = filhos
+  // diretos da raiz, etc.), independente de estarem colapsados ou não —
+  // usado pelo filtro por nível, que precisa enxergar a árvore inteira.
+  function getNodesAtDepth(targetDepth, node = root, d = 0, acc = []){
+    if (d === targetDepth) {
+      acc.push(node);
+      return acc;
+    }
+    (node.children || []).forEach(c => getNodesAtDepth(targetDepth, c, d + 1, acc));
+    return acc;
+  }
+
   return {
     getRoot, setRoot, createNode,
     findNode, findParent, addChild, updateNode, removeNode,
-    toggleCollapsed, depthOf, nodeCount, maxDepth,
+    toggleCollapsed, depthOf, nodeCount, maxDepth, getNodesAtDepth,
     getMaxOpenDepth, expandNextLevel, expandNextNode, collapseLastLevel, expandAllLevels, collapseAllLevels
   };
 })();
@@ -1772,6 +1986,7 @@ const AppState = {
   focusedNodeId: null,     // último nó focado (clique)
   editingFieldId: null,    // id do nó cujo campo está aberto pra edição
   viewPanelNodeId: null,   // id do nó cuja tela de descrição está aberta no momento (mostra a borda de destaque na cápsula)
+  filterRootId: null,      // id do nó usado como raiz temporária quando um filtro por nível está ativo (null = sem filtro)
   containerShape: 'capsule', // 'capsule' | 'rect' | 'rounded'
   containerHeight: 'max',    // 'max' | 'mid' | 'min'
   lineStyle: 'smooth',       // 'smooth' | 'straight' | 'rounded'
@@ -1980,8 +2195,18 @@ const Renderer = (() => {
   }
 
   function buildHierarchy(){
-    const rootData = TreeModel.getRoot();
-    const root = d3.hierarchy(rootData, d => d.collapsed ? null : d.children);
+    // quando há um filtro de nível ativo, a árvore visual nasce a partir
+    // do nó filtrado (ele vira a "raiz" temporária da visualização) — o
+    // restante da árvore real não é alterado, só a forma como é exibida.
+    // Se o nó filtrado tiver sido salvo como collapsed, ele é tratado como
+    // aberto mesmo assim (senão o filtro mostraria uma árvore vazia).
+    let rootData = TreeModel.getRoot();
+    if (AppState.filterRootId) {
+      const filtered = TreeModel.findNode(AppState.filterRootId);
+      if (filtered) rootData = filtered;
+    }
+    const isFilterRoot = (d) => AppState.filterRootId && d.id === AppState.filterRootId;
+    const root = d3.hierarchy(rootData, d => (d.collapsed && !isFilterRoot(d)) ? null : d.children);
 
     // calcula o ÍNDICE DE COR de cada nó com base em RAMO (linhagem) + colorLevels.
     // raiz = cor customizável própria (AppState.rootColor). Dentro da "zona de
@@ -3523,6 +3748,7 @@ const ProjectManager = (() => {
     AppState.textAlign = entry.state.textAlign ?? 'center';
     AppState.focusedNodeId = null;
     AppState.viewPanelNodeId = null;
+    AppState.filterRootId = null;
 
     currentProjectId = id;
     pendingProjectName = null;
@@ -3561,6 +3787,7 @@ const ProjectManager = (() => {
       currentProjectId = null;
       pendingProjectName = null;
       AppState.viewPanelNodeId = null;
+      AppState.filterRootId = null;
       TreeModel.setRoot(TreeModel.createNode('Novo projeto', ''));
       AppState.focusedNodeId = null;
       AppState.colorLevels = 4;
@@ -3654,6 +3881,7 @@ const ProjectManager = (() => {
     TreeModel.setRoot(TreeModel.createNode(trimmed, ''));
     AppState.focusedNodeId = null;
     AppState.viewPanelNodeId = null;
+    AppState.filterRootId = null;
     AppState.colorLevels = 4;
     AppState.containerShape = 'capsule';
     AppState.containerHeight = 'max';
@@ -3744,7 +3972,9 @@ const ProjectNameBar = (() => {
       saveLabel.textContent = name ? 'Salvar' : 'Salvar projeto';
     }
     unsavedEl.classList.toggle('show', dirty);
-    if (quickSaveBtn) quickSaveBtn.classList.toggle('show', dirty);
+    // o botão de salvar rápido só aparece no modo Editar — em modo
+    // Visualizar não faz sentido salvar (nada deveria ser editável ali)
+    if (quickSaveBtn) quickSaveBtn.classList.toggle('show', dirty && AppState.mode === 'edit');
 
     const saveBtn = document.getElementById('btn-save-project');
     if (saveBtn) {
@@ -3775,7 +4005,7 @@ const ProjectNameBar = (() => {
     if (!dirty) {
       dirty = true;
       unsavedEl.classList.add('show');
-      if (quickSaveBtn) quickSaveBtn.classList.add('show');
+      if (quickSaveBtn && AppState.mode === 'edit') quickSaveBtn.classList.add('show');
       const saveBtn = document.getElementById('btn-save-project');
       if (saveBtn) { saveBtn.disabled = false; saveBtn.classList.remove('is-disabled'); }
     }
@@ -4163,10 +4393,10 @@ const ImportExport = (() => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MindTree — Apresentação</title>
 <style>
-  :root{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#5b8def;--radius:10px;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;--highlight-ring:#3a3c46;}
-  @media (prefers-color-scheme: light){:root{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#3b6fd9;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;--highlight-ring:#ffffff;}}
-  html[data-theme="dark"]{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#5b8def;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;--highlight-ring:#3a3c46;}
-  html[data-theme="light"]{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#3b6fd9;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;--highlight-ring:#ffffff;}
+  :root{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#86b528;--radius:10px;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;--highlight-ring:#3a3c46;}
+  @media (prefers-color-scheme: light){:root{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#86b528;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;--highlight-ring:#ffffff;}}
+  html[data-theme="dark"]{--bg:#16171b;--bg-canvas:#1c1d22;--panel:#222328;--panel-2:#2a2b32;--border:#3a3b42;--border-light:#46474f;--text:#eceef2;--text-dim:#9a9ba5;--text-faint:#6b6c75;--accent:#86b528;--shadow:0 4px 20px rgba(0,0,0,.35);--dot-color:#33343d;--highlight-ring:#3a3c46;}
+  html[data-theme="light"]{--bg:#f4f5f7;--bg-canvas:#eaecf0;--panel:#ffffff;--panel-2:#f1f2f5;--border:#dcdfe4;--border-light:#c7cbd3;--text:#1c1e22;--text-dim:#5c5f68;--text-faint:#8b8e96;--accent:#86b528;--shadow:0 4px 20px rgba(20,20,30,.12);--dot-color:#d7d9de;--highlight-ring:#ffffff;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;}
   #canvas-wrap{position:fixed;inset:0;overflow:hidden;background:radial-gradient(circle,var(--dot-color) 1px,transparent 1px);background-size:24px 24px;background-color:var(--bg-canvas);}
@@ -4174,7 +4404,7 @@ const ImportExport = (() => {
   .tree-node-circle{cursor:pointer;}
   .circle-glyph{stroke:var(--panel);stroke-width:1.6;stroke-linecap:round;pointer-events:none;}
   .tree-capsule{cursor:pointer;}
-  .capsule-label{font-size:13px;font-weight:600;pointer-events:none;dominant-baseline:central;text-anchor:middle;}
+  .capsule-label{font-size:13px;font-weight:600;pointer-events:none;dominant-baseline:central;}
   .node-highlight-ring{fill:none;stroke:var(--highlight-ring);stroke-width:2.5;pointer-events:none;}
   .link-path{fill:none;stroke-width:2;}
   .mt-overlay{position:fixed;inset:0;background:rgba(10,11,14,.12);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;pointer-events:none;}
@@ -4198,10 +4428,12 @@ const ImportExport = (() => {
   .mt-children-title{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
   .mt-children-list{display:flex;flex-direction:column;gap:6px;}
   .mt-child-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;cursor:pointer;max-width:100%;}
-  .mt-child-row:hover{border-color:var(--accent);}
+  .mt-child-row:hover{border-color:var(--accent);background:color-mix(in srgb, var(--panel-2) 85%, var(--text) 15%);}
   .mt-child-main{flex:1 1 0%;min-width:0;overflow:hidden;}
   .mt-child-name{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .mt-child-text{font-size:12px;color:var(--text-faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
+  .mt-child-count{font-size:11px;font-weight:600;color:var(--accent);background:rgba(134,181,40,.15);border-radius:10px;padding:2px 7px;flex:none;}
+  .mt-chevron{width:16px;height:16px;color:var(--text-faint);flex:none;}
   .mt-empty-children{font-size:13px;color:var(--text-faint);font-style:italic;}
   #brand{position:fixed;top:14px;left:16px;font-size:13px;font-weight:600;color:var(--text-dim);z-index:50;}
   svg#tree-svg{cursor:grab;}
@@ -4821,6 +5053,8 @@ function openView(nodeId, history){
     const childrenHtml = node.children.map(c => \`
       <div class="mt-child-row" data-id="\${c.id}">
         <div class="mt-child-main"><div class="mt-child-name">\${escapeHtml(c.name||'Sem título')}</div>\${c.text?'<div class="mt-child-text">'+escapeHtml(truncate(c.text,80))+'</div>':''}</div>
+        \${c.children.length ? '<span class="mt-child-count">'+c.children.length+'</span>' : ''}
+        <svg class="mt-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
       </div>\`).join('');
     childrenSectionHtml = \`<div class="mt-children-title">Destinos (\${node.children.length})</div><div class="mt-children-list">\${childrenHtml}</div>\`;
   }
@@ -5270,11 +5504,14 @@ const ExportMenu = (() => {
     menu.className = 'color-popover export-menu-popover';
     menu.id = 'export-menu';
     menu.innerHTML = `
+      <div class="color-pop-head">Formato Apresentação</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+        <button class="mt-btn" data-fmt="html" style="width:100%;justify-content:flex-start;text-align:left;">HTML</button>
+      </div>
       <div class="color-pop-head">Formato nativo (níveis)</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
         <button class="mt-btn" data-fmt="csv" style="width:100%;justify-content:flex-start;text-align:left;">CSV (planilha)</button>
         <button class="mt-btn" data-fmt="xlsx" style="width:100%;justify-content:flex-start;text-align:left;">Excel (.xlsx)</button>
-        <button class="mt-btn" data-fmt="html" style="width:100%;justify-content:flex-start;text-align:left;">HTML (apresentação)</button>
       </div>
       <div class="color-pop-head">Campos combinados (tabela)</div>
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -5516,6 +5753,9 @@ const SearchManager = (() => {
   // lupa em telas pequenas, pra não tampar a árvore — toca a lupa pra abrir,
   // toca de novo (ou limpa a busca) pra fechar e liberar o espaço de novo
   function openMobileBar(){
+    // se o painel de filtro estiver aberto, fecha ele — ambos ocupam a
+    // mesma área da tela e não devem ficar abertos ao mesmo tempo
+    FilterManager.close();
     searchBar.classList.add('mobile-open');
     input.focus();
   }
@@ -5543,7 +5783,225 @@ const SearchManager = (() => {
     toggleBtn.addEventListener('click', toggleMobileBar);
   }
 
-  return { init, clearHighlights, highlightMatches };
+  return { init, clearHighlights, highlightMatches, closeMobileBar };
+})();
+
+/* =========================================================
+   FILTRO POR NÍVEL — escolhe um nível (coluna), depois um item específico
+   daquele nível, e a árvore passa a mostrar SÓ aquele item pra frente
+   (ele vira a raiz visual temporária). Botão de remover filtro disponível
+   pra voltar a ver a árvore inteira.
+   ========================================================= */
+const FilterManager = (() => {
+  const toggleBtn = document.getElementById('filter-toggle-btn');
+  const bar = document.getElementById('filter-bar');
+  const levelSelect = document.getElementById('filter-level-select');
+  const valueRow = document.getElementById('filter-value-row');
+  const valueInput = document.getElementById('filter-value-input');
+  const valueDropdown = document.getElementById('filter-value-dropdown');
+  const activeRow = document.getElementById('filter-active-row');
+  const activeName = document.getElementById('filter-active-name');
+  const clearBtn = document.getElementById('filter-clear-btn');
+
+  let selectedLevel = null;     // profundidade (1-based) escolhida no select
+  let levelOptions = [];        // nós disponíveis nesse nível, pra autocomplete
+  let highlightedIdx = -1;      // índice destacado na lista suspensa (navegação por teclado)
+
+  // popula o <select> com um item por nível existente na árvore, usando o
+  // nome customizado da coluna quando disponível (mesma fonte usada pela
+  // Planilha — AppState.columnNames / getColumnName)
+  function populateLevelSelect(){
+    const maxD = TreeModel.maxDepth();
+    const prevValue = levelSelect.value;
+    levelSelect.innerHTML = '<option value="">Selecione...</option>';
+    for (let level = 1; level <= maxD; level++) {
+      const opt = document.createElement('option');
+      opt.value = String(level);
+      opt.textContent = getColumnName(level);
+      levelSelect.appendChild(opt);
+    }
+    // mantém a seleção anterior se o nível ainda existir (árvore não mudou
+    // de profundidade) — evita resetar o filtro à toa a cada reabertura
+    if (prevValue && parseInt(prevValue, 10) <= maxD) levelSelect.value = prevValue;
+  }
+
+  function closeDropdown(){
+    valueDropdown.classList.remove('open');
+    valueDropdown.innerHTML = '';
+    highlightedIdx = -1;
+  }
+
+  function renderDropdown(filterText){
+    const term = (filterText || '').trim().toLowerCase();
+    const filtered = term
+      ? levelOptions.filter(n => (n.name || '').toLowerCase().includes(term))
+      : levelOptions;
+
+    if (!filtered.length) {
+      valueDropdown.innerHTML = '<div class="filter-value-empty">Nenhum item encontrado</div>';
+      valueDropdown.classList.add('open');
+      highlightedIdx = -1;
+      return;
+    }
+
+    valueDropdown.innerHTML = filtered.map((n, i) =>
+      `<div class="filter-value-option" data-id="${n.id}" data-idx="${i}">${escapeHtmlGlobal(n.name || 'Sem título')}</div>`
+    ).join('');
+    valueDropdown.classList.add('open');
+    highlightedIdx = -1;
+  }
+
+  function escapeHtmlGlobal(str){
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function applyFilter(nodeId){
+    const node = TreeModel.findNode(nodeId);
+    if (!node) return;
+    AppState.filterRootId = nodeId;
+    AppState.focusedNodeId = null;
+    AppState.viewPanelNodeId = null;
+    closeDropdown();
+    close();
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+    syncActiveRow();
+  }
+
+  function clearFilter(){
+    AppState.filterRootId = null;
+    Renderer.render();
+    requestAnimationFrame(() => Renderer.fitToScreen());
+    syncActiveRow();
+  }
+
+  function syncActiveRow(){
+    const isActive = !!AppState.filterRootId;
+    toggleBtn.classList.toggle('active', isActive);
+    activeRow.style.display = isActive ? 'flex' : 'none';
+    if (isActive) {
+      const node = TreeModel.findNode(AppState.filterRootId);
+      activeName.textContent = node ? (node.name || 'Sem título') : '';
+    }
+  }
+
+  function onLevelChange(){
+    const level = parseInt(levelSelect.value, 10);
+    closeDropdown();
+    valueInput.value = '';
+    if (!level) {
+      valueRow.style.display = 'none';
+      levelOptions = [];
+      selectedLevel = null;
+      return;
+    }
+    selectedLevel = level;
+    levelOptions = TreeModel.getNodesAtDepth(level);
+    valueRow.style.display = 'flex';
+    valueInput.focus();
+  }
+
+  function open(){
+    // se a busca estiver aberta, fecha ela — ambos ocupam a mesma área
+    // da tela e não devem ficar abertos ao mesmo tempo
+    SearchManager.closeMobileBar();
+    populateLevelSelect();
+    syncActiveRow();
+    bar.classList.add('open');
+    // se já existe um nível selecionado de antes, recarrega as opções
+    // (a árvore pode ter mudado desde a última vez que o painel foi aberto)
+    if (levelSelect.value) onLevelChange();
+  }
+  function close(){
+    bar.classList.remove('open');
+    closeDropdown();
+  }
+  function toggle(){
+    if (bar.classList.contains('open')) close();
+    else open();
+  }
+
+  function bindEvents(){
+    toggleBtn.addEventListener('click', toggle);
+
+    levelSelect.addEventListener('change', onLevelChange);
+
+    valueInput.addEventListener('input', () => {
+      renderDropdown(valueInput.value);
+    });
+    valueInput.addEventListener('focus', () => {
+      renderDropdown(valueInput.value);
+    });
+    valueInput.addEventListener('keydown', (ev) => {
+      const options = Array.from(valueDropdown.querySelectorAll('.filter-value-option'));
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        if (!options.length) return;
+        highlightedIdx = Math.min(highlightedIdx + 1, options.length - 1);
+        options.forEach((o, i) => o.classList.toggle('highlighted', i === highlightedIdx));
+        options[highlightedIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        if (!options.length) return;
+        highlightedIdx = Math.max(highlightedIdx - 1, 0);
+        options.forEach((o, i) => o.classList.toggle('highlighted', i === highlightedIdx));
+        options[highlightedIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const target = highlightedIdx >= 0 ? options[highlightedIdx] : options[0];
+        if (target) {
+          valueInput.value = target.textContent;
+          applyFilter(target.dataset.id);
+        }
+      } else if (ev.key === 'Escape') {
+        closeDropdown();
+      }
+    });
+
+    valueDropdown.addEventListener('click', (ev) => {
+      const opt = ev.target.closest('.filter-value-option');
+      if (!opt) return;
+      valueInput.value = opt.textContent;
+      applyFilter(opt.dataset.id);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      clearFilter();
+      levelSelect.value = '';
+      valueRow.style.display = 'none';
+      valueInput.value = '';
+    });
+
+    // fecha o painel ao clicar fora dele (mas não fecha o dropdown de
+    // sugestões clicando dentro do próprio campo/lista)
+    //
+    // o fechamento do DROPDOWN usa "mousedown" na fase de CAPTURA (terceiro
+    // argumento "true"), não "click" na fase normal — isso é necessário
+    // porque o dropdown fica visualmente por cima de outros elementos do
+    // painel (como o botão "Remover filtro", logo abaixo dele). Se
+    // esperássemos o "click" normal, o primeiro clique seria consumido
+    // pelo próprio dropdown (que está por cima) e nunca chegaria no botão.
+    // Fechando já no "mousedown" em fase de captura, o dropdown sai do
+    // caminho ANTES do "click" ser despachado, e o mesmo gesto já aciona
+    // o botão que estava embaixo, sem precisar de um segundo clique.
+    document.addEventListener('mousedown', (ev) => {
+      if (!valueDropdown.classList.contains('open')) return;
+      if (valueDropdown.contains(ev.target) || ev.target === valueInput) return;
+      closeDropdown();
+    }, true);
+
+    document.addEventListener('click', (ev) => {
+      if (!bar.classList.contains('open')) return;
+      if (bar.contains(ev.target) || toggleBtn.contains(ev.target)) return;
+      close();
+    });
+  }
+
+  bindEvents();
+  return { open, close, toggle, clearFilter };
 })();
 
 function bootstrap(){
@@ -5571,6 +6029,9 @@ function bootstrap(){
       NodeInteraction.resetViewPanelPos();
       Renderer.render();
     }
+    // se o painel de filtro estiver aberto, fecha ele também (só o painel
+    // suspenso — o filtro aplicado na árvore, se houver, continua valendo)
+    FilterManager.close();
     mainMenuDrawer.classList.add('open');
     mainMenuOverlay.classList.add('open');
   }
@@ -5624,6 +6085,31 @@ function bootstrap(){
   document.getElementById('menu-btn-reset').addEventListener('click', () => {
     closeMainMenu();
     ProjectManager.startNewProject();
+  });
+
+  // ---- "voltar ao Menu" — disponível dentro de cada painel aberto a
+  // partir do menu principal (Cores, Planilha, Estilo, Fontes, Projetos),
+  // à esquerda do "X" de fechar. Fecha o painel atual e reabre o Menu,
+  // ao invés de simplesmente fechar tudo. ----
+  document.getElementById('color-back-to-menu').addEventListener('click', () => {
+    ColorSelector.close();
+    openMainMenu();
+  });
+  document.getElementById('sheet-back-to-menu').addEventListener('click', () => {
+    SheetPanel.close();
+    openMainMenu();
+  });
+  document.getElementById('style-back-to-menu').addEventListener('click', () => {
+    StylePanel.close();
+    openMainMenu();
+  });
+  document.getElementById('font-back-to-menu').addEventListener('click', () => {
+    FontPanel.close();
+    openMainMenu();
+  });
+  document.getElementById('projects-back-to-menu').addEventListener('click', () => {
+    ProjectManager.close();
+    openMainMenu();
   });
 
   // ---- zoom / pan / fit ----
