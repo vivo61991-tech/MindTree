@@ -1987,6 +1987,8 @@ const AppState = {
   editingFieldId: null,    // id do nó cujo campo está aberto pra edição
   viewPanelNodeId: null,   // id do nó cuja tela de descrição está aberta no momento (mostra a borda de destaque na cápsula)
   filterRootId: null,      // id do nó usado como raiz temporária quando um filtro por nível está ativo (null = sem filtro)
+  depthOffset: 1,          // profundidade na árvore onde os dados "reais" começam (1 = padrão; 2 = campos combinados com raiz artificial extra)
+  colNameOffset: 1,        // índice 1-based de getColumnName para o primeiro nível de dados reais (1=normal; 2=quando 1ª coluna foi absorvida como nome da raiz)
   containerShape: 'capsule', // 'capsule' | 'rect' | 'rounded'
   containerHeight: 'max',    // 'max' | 'mid' | 'min'
   lineStyle: 'smooth',       // 'smooth' | 'straight' | 'rounded'
@@ -3749,6 +3751,8 @@ const ProjectManager = (() => {
     AppState.focusedNodeId = null;
     AppState.viewPanelNodeId = null;
     AppState.filterRootId = null;
+    AppState.depthOffset = 1;
+    AppState.colNameOffset = 1;
 
     currentProjectId = id;
     pendingProjectName = null;
@@ -3788,6 +3792,8 @@ const ProjectManager = (() => {
       pendingProjectName = null;
       AppState.viewPanelNodeId = null;
       AppState.filterRootId = null;
+    AppState.depthOffset = 1;
+    AppState.colNameOffset = 1;
       TreeModel.setRoot(TreeModel.createNode('Novo projeto', ''));
       AppState.focusedNodeId = null;
       AppState.colorLevels = 4;
@@ -3882,6 +3888,8 @@ const ProjectManager = (() => {
     AppState.focusedNodeId = null;
     AppState.viewPanelNodeId = null;
     AppState.filterRootId = null;
+    AppState.depthOffset = 1;
+    AppState.colNameOffset = 1;
     AppState.colorLevels = 4;
     AppState.containerShape = 'capsule';
     AppState.containerHeight = 'max';
@@ -5229,8 +5237,8 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
       Object.keys(lastAtLevel).forEach(k => { if (parseInt(k) > level) delete lastAtLevel[k]; });
     });
     // se só há um filho no nível 0 e raiz "Importado" é redundante, promove
-    if (root.children.length === 1) return root.children[0];
-    return root;
+    if (root.children.length === 1) return { root: root.children[0], promoted: true };
+    return { root, promoted: false };
   }
 
   /* ---------- CAMPOS COMBINADOS (tabela tradicional tipo banco de dados) ----------
@@ -5361,6 +5369,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
 
     let newRoot;
     let columnShift = 0; // quantas posições os nomes de coluna devem deslocar (raiz extra criada)
+    let nativePromoted = false; // se rowsToTree promoveu o único filho como raiz
     if (looksLikeCombinedFields(header, bodyFiltered, levelColCount)) {
       // formato de "campos combinados" — tabela tradicional com valores repetidos
       const result = importCombinedFields(header, bodyFiltered, levelColCount, textIdx);
@@ -5375,7 +5384,9 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
         cells: r.slice(0, levelColCount),
         text: textIdx > -1 ? r[textIdx] : ''
       }));
-      newRoot = rowsToTree(rows);
+      const result = rowsToTree(rows);
+      newRoot = result.root;
+      nativePromoted = result.promoted; // houve promoção = col 0 virou raiz
     }
 
     // captura os nomes de cabeçalho das colunas de nível (se diferentes do padrão
@@ -5387,6 +5398,22 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
       capturedNames.push(h || '');
     }
     AppState.columnNames = capturedNames;
+
+    // salva em que profundidade da árvore os dados "reais" começam, e a
+    // partir de qual índice de coluna (1-based) os nomes de coluna começam
+    // — necessário porque quando singleRootValue=true a primeira coluna da
+    // planilha foi absorvida como nome da raiz, então os dados de depth 1
+    // correspondem à coluna 2 da planilha (colNameOffset=2), não à coluna 1.
+    const isCombined = looksLikeCombinedFields(header, bodyFiltered, levelColCount);
+    const singleRootAbsorbed = isCombined && columnShift === 0; // singleRootValue=true
+    AppState.depthOffset = columnShift > 0 ? 2 : 1;
+    // colNameOffset: índice 1-based de getColumnName que corresponde ao
+    // primeiro nível de dados reais:
+    //   shifted (raiz artificial extra): depthOffset=2, colNameOffset=2
+    //   singleRoot absorvido (campos combinados): depthOffset=1, colNameOffset=2
+    //   nativePromoted (formato nativo, col 0 virou raiz): depthOffset=1, colNameOffset=2
+    //   formato nativo normal (múltiplas raízes): depthOffset=1, colNameOffset=1
+    AppState.colNameOffset = (columnShift > 0 || singleRootAbsorbed || nativePromoted) ? 2 : 1;
 
     // expande TODA a árvore recém-importada — sem isso, tudo fica colapsado
     // e a pessoa vê só a raiz na tela, parecendo que a importação falhou
@@ -5452,6 +5479,10 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
             if (style.containerHeight) AppState.containerHeight = style.containerHeight;
             if (style.lineStyle) AppState.lineStyle = style.lineStyle;
             if (Array.isArray(style.columnNames)) AppState.columnNames = style.columnNames;
+            // reseta os offsets de filtro — a árvore importada de HTML é nativa,
+            // sem raiz artificial; o filtro deve usar os valores padrão
+            AppState.depthOffset = 1;
+            AppState.colNameOffset = 1;
             if (Array.isArray(style.customPalette) && style.customPalette.length) AppState.customPalette = style.customPalette;
             if (style.rootColor) AppState.rootColor = style.rootColor;
             // configurações de fonte — só presentes em exports feitos após
@@ -5810,19 +5841,44 @@ const FilterManager = (() => {
   // popula o <select> com um item por nível existente na árvore, usando o
   // nome customizado da coluna quando disponível (mesma fonte usada pela
   // Planilha — AppState.columnNames / getColumnName)
+  // mapa de value do select → profundidade real na árvore (0-based com 0=raiz)
+  let depthBySelectValue = {};
+
   function populateLevelSelect(){
     const maxD = TreeModel.maxDepth();
     const prevValue = levelSelect.value;
     levelSelect.innerHTML = '<option value="">Selecione...</option>';
-    for (let level = 1; level <= maxD; level++) {
+    depthBySelectValue = {};
+
+    // itera de depth 0 (raiz) até a folha mais profunda.
+    // depth 0 = Nível 1 para o usuário, depth 1 = Nível 2, etc.
+    // getColumnName(depth + 1) retorna o nome correto da coluna para esse nível
+    // (já que columnNames é indexado 1-based e corresponde aos níveis do usuário).
+    let selectIndex = 1;
+    for (let depth = 1; depth <= maxD; depth++) {
+      const nodes = TreeModel.getNodesAtDepth(depth);
+      if (!nodes.length) continue;
+      if (nodes.length === 1) continue; // 1 único nó = filtrar não tem utilidade
+
+      const rawLabel = getColumnName(depth + 1);
+      // se o label for genérico ("Nível N"), usa o número real do nível
+      // (depth+1) em vez do índice sequencial do select — assim "Nível 2"
+      // no filtro corresponde ao "NÍVEL 2" da planilha original, evitando
+      // confusão quando há níveis ocultos (ex: raiz única em depth 0 é
+      // pulada mas o nível 2 da planilha continua sendo chamado "Nível 2")
+      const label = rawLabel.match(/^nível\s+\d+$/i) ? ('Nível ' + (depth + 1)) : rawLabel;
+
       const opt = document.createElement('option');
-      opt.value = String(level);
-      opt.textContent = getColumnName(level);
+      opt.value = String(selectIndex);
+      opt.textContent = label;
       levelSelect.appendChild(opt);
+      depthBySelectValue[selectIndex] = depth;
+      selectIndex++;
     }
-    // mantém a seleção anterior se o nível ainda existir (árvore não mudou
-    // de profundidade) — evita resetar o filtro à toa a cada reabertura
-    if (prevValue && parseInt(prevValue, 10) <= maxD) levelSelect.value = prevValue;
+
+    if (prevValue && depthBySelectValue[parseInt(prevValue, 10)]) {
+      levelSelect.value = prevValue;
+    }
   }
 
   function closeDropdown(){
@@ -5873,6 +5929,8 @@ const FilterManager = (() => {
 
   function clearFilter(){
     AppState.filterRootId = null;
+    AppState.depthOffset = 1;
+    AppState.colNameOffset = 1;
     Renderer.render();
     requestAnimationFrame(() => Renderer.fitToScreen());
     syncActiveRow();
@@ -5889,17 +5947,19 @@ const FilterManager = (() => {
   }
 
   function onLevelChange(){
-    const level = parseInt(levelSelect.value, 10);
+    const selectVal = parseInt(levelSelect.value, 10);
     closeDropdown();
     valueInput.value = '';
-    if (!level) {
+    if (!selectVal) {
       valueRow.style.display = 'none';
       levelOptions = [];
       selectedLevel = null;
       return;
     }
-    selectedLevel = level;
-    levelOptions = TreeModel.getNodesAtDepth(level);
+    const realDepth = depthBySelectValue[selectVal];
+    if (realDepth === undefined) return;
+    selectedLevel = realDepth;
+    levelOptions = TreeModel.getNodesAtDepth(realDepth);
     valueRow.style.display = 'flex';
     valueInput.focus();
   }
