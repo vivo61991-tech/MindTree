@@ -789,7 +789,7 @@
     border-radius:var(--radius-sm);
     color:var(--text);
     padding:9px 11px;
-    font-size:14px;
+    font-size:16px; /* mínimo 16px para evitar zoom automático em mobile */
     outline:none;
     transition:border-color .15s;
   }
@@ -2835,11 +2835,14 @@ const Dialog = (() => {
       }
       overlay.addEventListener('click', (ev) => {
         const action = ev.target.closest('[data-action]')?.dataset.action;
-        if (ev.target === overlay || action === 'cancel' || action === 'close') finish(false);
+        // não fecha ao clicar/tocar no overlay fora (no mobile pode ser acidental)
+        if (action === 'cancel' || action === 'close') finish(false);
         else if (action === 'confirm') finish(true);
       });
       document.addEventListener('keydown', onKeydown);
-      overlay.querySelector('[data-action="confirm"]').focus();
+      setTimeout(() => {
+        try { overlay.querySelector('[data-action="confirm"]').focus(); } catch(e) {}
+      }, 50);
     });
   }
 
@@ -2872,10 +2875,12 @@ const Dialog = (() => {
       }
       overlay.addEventListener('click', (ev) => {
         const action = ev.target.closest('[data-action]')?.dataset.action;
-        if (ev.target === overlay || action === 'confirm' || action === 'close') finish();
+        if (action === 'confirm' || action === 'close') finish();
       });
       document.addEventListener('keydown', onKeydown);
-      overlay.querySelector('[data-action="confirm"]').focus();
+      setTimeout(() => {
+        try { overlay.querySelector('[data-action="confirm"]').focus(); } catch(e) {}
+      }, 50);
     });
   }
 
@@ -2890,7 +2895,10 @@ const Dialog = (() => {
           </div>
           <div class="mt-modal-body">
             ${message ? `<p class="mt-dialog-message">${escapeHtml(message)}</p>` : ''}
-            <input type="text" class="mt-input" id="mt-dialog-input" value="${escapeAttr(defaultValue || '')}" />
+            <input type="text" class="mt-input" id="mt-dialog-input"
+              value="${escapeAttr(defaultValue || '')}"
+              autocomplete="off" autocorrect="off" autocapitalize="off"
+              inputmode="text" enterkeyhint="done" />
           </div>
           <div class="mt-dialog-foot">
             <button class="mt-btn cancel" data-action="cancel"><span class="mt-btn-icon">✖</span> Cancelar</button>
@@ -2909,16 +2917,25 @@ const Dialog = (() => {
       }
       function onKeydown(ev){
         if (ev.key === 'Escape') finish(null);
-        if (ev.key === 'Enter') finish(input.value);
+        // Enter no teclado físico confirma; no mobile o botão Confirmar é o caminho
+        if (ev.key === 'Enter') { ev.preventDefault(); finish(input.value); }
       }
       overlay.addEventListener('click', (ev) => {
         const action = ev.target.closest('[data-action]')?.dataset.action;
-        if (ev.target === overlay || action === 'cancel' || action === 'close') finish(null);
+        // não fecha ao clicar no overlay fora (no mobile pode ser toque acidental)
+        if (action === 'cancel' || action === 'close') finish(null);
         else if (action === 'confirm') finish(input.value);
       });
+      // no mobile, o input também dispara "change" com Enter no teclado virtual
+      input.addEventListener('change', () => { /* não faz nada, mas previne comportamentos padrão */ });
       document.addEventListener('keydown', onKeydown);
-      input.focus();
-      input.select();
+      // usa setTimeout para dar tempo ao DOM renderizar antes de focar —
+      // necessário no Android onde focus() imediato pode falhar
+      setTimeout(() => {
+        input.focus();
+        // select() pode falhar no iOS, então protege com try/catch
+        try { input.select(); } catch(e) {}
+      }, 100);
     });
   }
 
