@@ -2729,6 +2729,15 @@ const Renderer = (() => {
     const nodes = lastRoot.descendants();
     if (!nodes.length) return;
 
+    // no Android, clientWidth pode ser 0 logo após o teclado fechar —
+    // tenta novamente depois de um frame se as dimensões ainda não estiverem disponíveis
+    const viewW = wrap.clientWidth;
+    const viewH = wrap.clientHeight;
+    if (!viewW || !viewH) {
+      requestAnimationFrame(() => fitToScreen());
+      return;
+    }
+
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     nodes.forEach(d => {
       const pos = getNodeScreenPos(d.data.id);
@@ -2741,13 +2750,11 @@ const Renderer = (() => {
 
     const treeW = maxX - minX;
     const treeH = maxY - minY;
-    const TOPBAR_H = 56; // altura da topbar — desconta da área útil pra não centralizar atrás dela
-    const viewW = wrap.clientWidth;
-    const viewH = wrap.clientHeight - TOPBAR_H;
+    const TOPBAR_H = 56;
     const MARGIN = 64;
 
     const scaleX = (viewW - MARGIN * 2) / treeW;
-    const scaleY = (viewH - MARGIN * 2) / treeH;
+    const scaleY = (viewH - TOPBAR_H - MARGIN * 2) / treeH;
     const k = Math.min(scaleX, scaleY, ZOOM_MAX);
     const kClamped = Math.max(k, ZOOM_MIN);
 
@@ -2755,7 +2762,7 @@ const Renderer = (() => {
     const centerY = (minY + maxY) / 2;
 
     const tx = viewW / 2 - centerX * kClamped;
-    const ty = TOPBAR_H + viewH / 2 - centerY * kClamped;
+    const ty = TOPBAR_H + (viewH - TOPBAR_H) / 2 - centerY * kClamped;
 
     zoomTo(d3.zoomIdentity.translate(tx, ty).scale(kClamped), 450);
   }
@@ -3923,12 +3930,27 @@ const ProjectManager = (() => {
     AppState.textAlign = 'center';
     currentProjectId = null;
     pendingProjectName = trimmed;
-    Renderer.render();
-    requestAnimationFrame(() => Renderer.fitToScreen());
+
+    // fecha o drawer antes de renderizar — no Android o teclado virtual pode
+    // ainda estar fechando, o que altera clientWidth/clientHeight e faz
+    // fitToScreen calcular posições erradas (ou lastRoot ficar null se render
+    // for chamado antes do layout estabilizar)
+    close();
     SheetPanel.refresh();
     ProjectNameBar.markClean();
     ProjectNameBar.refresh();
-    close();
+
+    // aguarda o layout estabilizar após o teclado virtual fechar no Android
+    // antes de renderizar e centralizar a árvore
+    const doRender = () => {
+      Renderer.render();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => Renderer.fitToScreen());
+      });
+    };
+    // duplo requestAnimationFrame garante que o DOM foi totalmente atualizado
+    // antes de medir dimensões para o fitToScreen
+    setTimeout(doRender, 300);
   }
 
   function bindEvents(){
